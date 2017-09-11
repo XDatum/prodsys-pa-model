@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+export PRODSYSPA_DEFT_USER=''
+export PRODSYSPA_DEFT_PASS=''
+export PRODSYSPA_JEDI_USER=''
+export PRODSYSPA_JEDI_PASS=''
