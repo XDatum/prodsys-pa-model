@@ -178,14 +178,17 @@ class Predictor(object):
                 if DataType.Test in data_types and not self._test_data_path:
                     self._training_data, self._test_data = \
                         parsed_data.randomSplit([0.7, 0.3])
-                elif DataType.Test not in data_types:
+                else:
+                #elif DataType.Test not in data_types:
                     self._training_data = parsed_data
 
-            elif data_type == DataType.Test:
+            elif data_type == DataType.Test and self._test_data_path:
                 self._test_data = parsed_data
 
             elif data_type == DataType.Input:
                 self._input_data = parsed_data
+
+# TODO: rework on the definition/setup of data of different types
 
 # if `data_types = [DataType.Test]` and `test_data_path` is not set
 # then there is no `test_data`; no `test_data_path` should work only
@@ -209,7 +212,7 @@ class Predictor(object):
             @rtype: dict
             """
             return dict(
-                map(lambda x: (x[0], len(LABELED_POINTS[x])), LABELED_POINTS))
+                map(lambda x: (x[0], len(LABELED_POINTS[x]) + 1), LABELED_POINTS))
 
         try:
             self._model = _pa_method.trainRegressor(
@@ -269,6 +272,12 @@ class Predictor(object):
             pass
 
 # - general purpose methods -
+
+    def print_defined_options(self):
+        """
+        Print defined options.
+        """
+        raise NotImplementedError
 
     def run_trainer(self, with_eval=False, test_data_dir=None):
         """
