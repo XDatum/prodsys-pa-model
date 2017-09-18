@@ -23,9 +23,17 @@ if not os.environ.get('SPARK_HOME'):
 SERVICE_NAME = 'ProdSysPA'
 
 TRAINING_OPTIONS = {
-    'numIterations': 300,
-    'maxDepth': 8,
-    'maxBins': 836
+    'gbt': {
+        'numIterations': 200,
+        'maxDepth': 8,
+        'maxBins': 300
+    },
+    'rf': {
+        'numTrees': 75,
+        'maxDepth': 8,
+        'maxBins': 300,
+        'seed': 42
+    }
 }
 
 LABELED_POINTS = {
@@ -43,8 +51,8 @@ LABELED_POINTS = {
                      u'mc_evind'],
     (1, 'productionstep'): [u'deriv', u'digit', u'eventIndex', u'evgen', u'merge', u'recon', u'simul', u'skim'],
     (2, 'provenance'): [u'AP', u'GP'],
-    (3, 'username'): [u'agbogdan', u'arobson', u'atlas-dpd-production',
-                      u'baines', u'bcarlson', u'befreund',
+    (3, 'username'): [u'agbogdan', u'arobson', u'arturos', u'atlas-dpd-production',
+                      u'baines', u'bawa', u'bcarlson', u'befreund', u'bernius',
                       u'cchavezb', u'cescobar', u'czodrows',
                       u'damazio', u'default', u'dhirsch', u'dkar', u'dlesny', u'dsouth',
                       u'efeng', u'efullana', u'egramsta',
@@ -54,7 +62,7 @@ LABELED_POINTS = {
                       u'iconnell', u'isantoyo',
                       u'jbarkelo', u'jferrand', u'jgarcian', u'jmyers', u'jtanaka', u'jwang', u'jzhong',
                       u'kaplan', u'knikolop', u'kvadla',
-                      u'mamolla', u'mann', u'maurice', u'mborodin', u'mcfayden', u'mehlhase', u'mhodgkin', u'miochoa', u'mwielers',
+                      u'mamolla', u'mann', u'maurice', u'mborodin', u'mcfayden', u'mdobre', u'mehlhase', u'mhodgkin', u'miochoa', u'mshapiro', u'mughetto', u'mwielers',
                       u'olszewsk',
                       u'pacheco', u'pagacova',
                       u'retmas', u'rkeyes', u'rnayyar',
@@ -72,6 +80,7 @@ LABELED_POINTS = {
                           u'AP_IDET', u'AP_IDTR',
                           u'AP_JETM',
                           u'AP_MCGN', u'AP_MUON',
+                          u'AP_PHYS',
                           u'AP_REPR',
                           u'AP_SIMU', u'AP_SOFT', u'AP_STDM', u'AP_SUSY',
                           u'AP_TAUP', u'AP_TDAQ', u'AP_THLT', u'AP_TOPQ', u'AP_TRIG',
@@ -81,10 +90,13 @@ LABELED_POINTS = {
                           u'GP_EGAM', u'GP_EXOT',
                           u'GP_FTAG',
                           u'GP_HIGG', u'GP_HION',
+                          u'GP_IDTR',
                           u'GP_JETM',
+                          u'GP_MCGN', u'GP_MUON',
                           u'GP_PHYS',
-                          u'GP_STDM', u'GP_SUSY',
-                          u'GP_TAUP', u'GP_THLT', u'GP_TOPQ',
+                          u'GP_REPR',
+                          u'GP_SOFT', u'GP_STDM', u'GP_SUSY',
+                          u'GP_TAUP', u'GP_THLT', u'GP_TOPQ', u'GP_TRIG',
                           u'GP_UPGR',
                           u'GP_VALI'],
     (5, 'processingtype'): [u'deriv', u'digit',
@@ -97,12 +109,12 @@ LABELED_POINTS = {
                             u'urgent',
                             u'validation'],
     (6, 'cloud'): [u'CERN', u'WORLD'],
-    (7, 'prodsourcelabel'): [u'managed'],
+    (7, 'prodsourcelabel'): [u'managed', u'ptest'],
     (8, 'corecount'): [u'0', u'1', u'4', u'8', u'9'],
     (9, 'architecture'): [u'i686-slc5-gcc43-opt',
                           u'x86_64-slc5-gcc43-opt',
                           u'x86_64-slc6-gcc47-opt', u'x86_64-slc6-gcc48-opt', u'x86_64-slc6-gcc49-opt', u'x86_64-slc6-gcc62-opt'],
-    (10, 'transpath'): [u'AODMerge_tf.py', u'AtlasG4_tf.py', u'AtlasG4_trf.py',
+    (10, 'transpath'): [u'AODMerge_tf.py', u'Archive_tf.py', u'AtlasG4_tf.py', u'AtlasG4_trf.py',
                         u'BSOverlayFilter_tf.py',
                         u'DigiMReco_trf.py', u'Digi_tf.py',
                         u'ESDMerge_tf.py', u'EVNTMerge_tf.py',
@@ -133,6 +145,7 @@ LABELED_POINTS = {
                       u'wuppertalprod'],
     (12, 'workqueue_id'): [u'1', u'2', u'3', u'4', u'7', u'8', u'9',
                            u'10', u'12', u'13', u'14', u'15',
+                           u'20',
                            u'200', u'201',
                            u'1000', u'1001', u'1002', u'1003', u'1004', u'1010'],
     (13, 'gshare'): [u'Data Derivations',
@@ -140,7 +153,9 @@ LABELED_POINTS = {
                      u'Group production',
                      u'HLT Reprocessing', u'Heavy Ion',
                      u'MC 16', u'MC 16 evgen', u'MC Default', u'MC Default evgen', u'MC Derivations', u'MC Production', u'MC production',
+                     u'Overlay',
                      u'Reprocessing default',
+                     u'Test',
                      u'Upgrade',
                      u'Validation']
 }

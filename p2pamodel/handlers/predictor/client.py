@@ -16,6 +16,7 @@
 from pyspark import SparkContext
 from pyspark.sql import SQLContext
 from pyspark.mllib.tree import GradientBoostedTrees, GradientBoostedTreesModel
+from pyspark.mllib.tree import RandomForest, RandomForestModel
 from pyspark.mllib.regression import LabeledPoint
 
 from ..settings import (DataType,
@@ -27,8 +28,18 @@ from .config import (SERVICE_NAME,
                      LABELED_POINTS,
                      SELECT_PARAMS)
 
-_pa_method = GradientBoostedTrees
-_pa_model = GradientBoostedTreesModel
+IS_RF_METHOD = True
+
+if not IS_RF_METHOD:
+    _pa_method = GradientBoostedTrees
+    _pa_model = GradientBoostedTreesModel
+    _pa_key = 'gbt'
+else:
+    _pa_method = RandomForest
+    _pa_model = RandomForestModel
+    _pa_key = 'rf'
+
+_training_options = TRAINING_OPTIONS[_pa_key]
 
 sc = SparkContext(appName=SERVICE_NAME)
 
@@ -138,7 +149,8 @@ class Predictor(object):
         @param data_types: Flags to define which data should be prepared.
         @type data_types: list
         """
-        filter_query = 'TASKID=PARENT_TID AND NUCLEUS IS NOT NULL'
+        # TODO: should be reworked
+        #filter_query = 'TASKID=PARENT_TID AND NUCLEUS IS NOT NULL'
 
         def create_labeled_point(record):
             """
@@ -171,7 +183,8 @@ class Predictor(object):
                 continue
 
             raw_data = sql_context.read.parquet(self._get_path(data_type))
-            filtered_data = raw_data.filter(filter_query).select(*SELECT_PARAMS)
+            #filtered_data = raw_data.filter(filter_query).select(*SELECT_PARAMS)
+            filtered_data = raw_data.select(*SELECT_PARAMS)
             parsed_data = filtered_data.map(create_labeled_point)
 
             if data_type == DataType.Training:
@@ -218,7 +231,7 @@ class Predictor(object):
             self._model = _pa_method.trainRegressor(
                 data=self._training_data,
                 categoricalFeaturesInfo=get_categorical_features_info(),
-                **TRAINING_OPTIONS)
+                **_training_options)
         except ValueError, e:
             raise Exception('[ERROR] Exception in model training: {0}'.format(e))
         else:
