@@ -232,6 +232,7 @@ class Collector(object):
         @keyword days_offset: Number of days to offset.
         @keyword task_state: State of the requested tasks.
         @keyword output_type: Data output type.
+        @keyword force: Force to (re)create the output directory.
         """
         self.import_data(days=kwargs.get('days'),
                          days_offset=kwargs.get('days_offset'),
@@ -240,6 +241,9 @@ class Collector(object):
         output_type = kwargs.get('output_type')
         if output_type not in DataType.attrs.values():
             output_type = DataType.Training
+
+        if kwargs.get('force'):
+            remove_hdfs_dir(self._get_dir(output_type))
 
         self.convert_data(output_dir_name=output_type)
 

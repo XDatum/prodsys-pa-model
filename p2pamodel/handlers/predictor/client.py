@@ -19,6 +19,7 @@ from pyspark.mllib.tree import GradientBoostedTrees, GradientBoostedTreesModel
 from pyspark.mllib.tree import RandomForest, RandomForestModel
 from pyspark.mllib.regression import LabeledPoint
 
+from ...utils import pyCMD
 from ..settings import (DataType,
                         STORAGE_PATH_FORMAT,
                         WORK_DIR_NAME_DEFAULT)
@@ -42,6 +43,16 @@ else:
 _training_options = TRAINING_OPTIONS[_pa_key]
 
 sc = SparkContext(appName=SERVICE_NAME)
+
+
+def remove_hdfs_dir(path):
+    """
+    Remove directory from HDFS storage.
+
+    @param path: Full dir path.
+    @type path: str
+    """
+    pyCMD('hdfs', ['dfs', '-rm', '-r', '-f', '-skipTrash', path]).execute()
 
 
 class Predictor(object):
@@ -292,7 +303,7 @@ class Predictor(object):
         """
         raise NotImplementedError
 
-    def run_trainer(self, with_eval=False, test_data_dir=None):
+    def run_trainer(self, with_eval=False, test_data_dir=None, **kwargs):
         """
         Run model training/testing process.
 
@@ -300,6 +311,8 @@ class Predictor(object):
         @type with_eval: bool
         @param test_data_dir: Directory with test data.
         @type test_data_dir: str/None
+
+        @keyword force: Force to (re)create the model directory.
         """
         self._test_data_path = test_data_dir
 
@@ -308,12 +321,15 @@ class Predictor(object):
             data_types.append(DataType.Test)
         self.prepare_data(data_types=data_types)
 
+        if kwargs.get('force'):
+            remove_hdfs_dir(self._model_path)
+
         self.create_model()
 
         if with_eval:
             self.evaluate_model()
 
-    def run_evaluator(self, reload_model=False, test_data_dir=None):
+    def run_evaluator(self, reload_model=False, test_data_dir=None, **kwargs):
         """
         Run model evaluation process.
 
@@ -321,6 +337,8 @@ class Predictor(object):
         @type reload_model: bool
         @param test_data_dir: Directory with test data.
         @type test_data_dir: str/None
+
+        @keyword force: Force to (re)create the eval directory.
         """
         self._test_data_path = test_data_dir
 
@@ -328,6 +346,9 @@ class Predictor(object):
 
         if self._model is None or reload_model:
             self.load_model()
+
+        if kwargs.get('force'):
+            remove_hdfs_dir(self._model_eval_path)
 
         self.evaluate_model()
 

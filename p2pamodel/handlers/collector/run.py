@@ -41,6 +41,13 @@ def get_args():
     )
 
     parser.add_argument(
+        '-f', '--force',
+        dest='force',
+        action='store_true',
+        default=False
+    )
+
+    parser.add_argument(
         '-w', '--work-dir',
         dest='work_dir',
         help='Relative path of the working directory.',
@@ -105,7 +112,8 @@ def proceed(args):
     collector.execute(days=args.days,
                       days_offset=args.days_offset,
                       task_state=args.task_state,
-                      output_type=args.output_type)
+                      output_type=args.output_type,
+                      force=args.force)
 
 
 if __name__ == '__main__':

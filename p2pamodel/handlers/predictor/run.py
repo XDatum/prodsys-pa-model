@@ -43,6 +43,13 @@ def get_args():
     )
 
     parser.add_argument(
+        '-f', '--force',
+        dest='force',
+        action='store_true',
+        default=False
+    )
+
+    parser.add_argument(
         '-w', '--work-dir',
         dest='work_dir',
         help='Relative path of the working directory.',
@@ -87,9 +94,10 @@ def proceed(args):
                           verbose=args.verbose)
 
     if args.train:
-        predictor.run_trainer(with_eval=args.with_eval)
+        predictor.run_trainer(with_eval=args.with_eval,
+                              force=args.force)
     elif args.evaluate:
-        predictor.run_evaluator()
+        predictor.run_evaluator(force=args.force)
     else:
         predictor.run_predictor()
 
