@@ -1,0 +1,18 @@
+#
+# - Cron jobs for ProdSys PA Model Handling service -
+#
+
+
+# - create model with [project=data] tasks (weekly) -
+
+00 08 * * 1 source /home/cronjobs/services/env.sh; $P2PA_MODEL_DIR/bin/create_model_data.sh
+
+
+# - get new [project=data] tasks and make predictions (daily) -
+
+# - create model with [project=mc] tasks (weekly) -
+
+# - get new [project=mc] tasks and make predictions (daily) -
+
+
+# --- end ---

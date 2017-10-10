@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+P2PA_CRONJOBS_DIR=/home/cronjobs
+P2PA_CRONJOBS_LOG_DIR=${P2PA_CRONJOBS_DIR}/logs
+
+P2PA_MODEL_DIR=${P2PA_CRONJOBS_DIR}/services/prodsys-pa-model
+
+export P2PA_CRONJOBS_DIR P2PA_CRONJOBS_LOG_DIR P2PA_MODEL_DIR
