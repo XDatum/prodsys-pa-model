@@ -3,16 +3,13 @@
 #
 
 
-# - create model with [project=data] tasks (weekly) -
+# - create model with [projectType=data/mc] tasks (weekly) -
 
-00 08 * * 1 source /home/cronjobs/services/env.sh; $P2PA_MODEL_DIR/bin/create_model_data.sh
+00 08 * * 1 source /home/cronjobs/services/env.sh; $P2PA_MODEL_DIR/bin/create_model.sh data
+00 09 * * 1 source /home/cronjobs/services/env.sh; $P2PA_MODEL_DIR/bin/create_model.sh mc
 
 
-# - get new [project=data] tasks and make predictions (daily) -
-
-# - create model with [project=mc] tasks (weekly) -
-
-# - get new [project=mc] tasks and make predictions (daily) -
+# - get new [projectType=data/mc] tasks and make predictions (daily) -
 
 
 # --- end ---
