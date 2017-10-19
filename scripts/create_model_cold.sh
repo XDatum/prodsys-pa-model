@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 
-projecttype=$1
+MODEL_WORK_DIR=model_cold
+QUERY_CONFIG=cfg_model_cold
 
-MODEL_WORK_DIR=model_${projecttype}
-QUERY_CONFIG=cfg_${projecttype}
-
-LOG_FILE=${P2PA_CRONJOBS_LOG_DIR}/create_model_${projecttype}.log
+LOG_FILE=${P2PA_CRONJOBS_LOG_DIR}/create_model_cold.log
 
 echo "$(date +"%Y-%m-%d %H:%M:%S") - starting" > ${LOG_FILE} 2>&1
 

@@ -3,13 +3,16 @@
 #
 
 
-# - create model with [projectType=data/mc] tasks (weekly) -
-
-00 08 * * 1 source /home/cronjobs/services/env.sh; $P2PA_MODEL_DIR/bin/create_model.sh data
-00 09 * * 1 source /home/cronjobs/services/env.sh; $P2PA_MODEL_DIR/bin/create_model.sh mc
+# - get tasks to calculate duration thresholds (weekly) -
+00 07 * * 1 source /home/cronjobs/services/env.sh; $P2PA_MODEL_DIR/bin/get_threshold_set.sh
 
 
-# - get new [projectType=data/mc] tasks and make predictions (daily) -
+# - create model [cold-prediction] with [projectType=data/mc] tasks (weekly) -
+00 08 * * 1 source /home/cronjobs/services/env.sh; $P2PA_MODEL_DIR/bin/create_model_cold.sh
+
+
+# - get new [projectType=data/mc] tasks and make [cold] predictions (daily) -
+00 10 * * * source /home/cronjobs/services/env.sh; $P2PA_MODEL_DIR/bin/generate_predictions_cold.sh
 
 
 # --- end ---
