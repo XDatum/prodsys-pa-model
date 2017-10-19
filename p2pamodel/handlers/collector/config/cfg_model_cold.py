@@ -9,7 +9,6 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Authors:
-# - Maksim Gubin, <maksim.gubin@cern.ch>, 2016
 # - Mikhail Titov, <mikhail.titov@cern.ch>, 2017
 #
 
@@ -26,11 +25,9 @@ config.sqoop = ConfigBase()
 deft_src = ConfigBase('deft')  # name is used in parquet-converter
 deft_src.options = [
     '--as-avrodatafile', ('-m', '1'),
-    ('--map-column-java', 'TASKID=Long'),
-    ('--map-column-java', 'START_TIME=Long'),
-    ('--map-column-java', 'ENDTIME=Long'),
-    ('--map-column-java', 'SUBMIT_TIME=Long'),
-    ('--map-column-java', 'TIMESTAMP=Long')]
+    ('--map-column-java', 'TASKID=Long,JEDI_TASK_PARAMETERS=String'),
+    ('--inline-lob-limit', '0')
+]
 
 deft_src.db = ConfigBase()
 deft_src.db.jdbc = 'jdbc:oracle:thin:@//ADCR2-DG-S.cern.ch:10121/ADCR.cern.ch'
@@ -38,10 +35,15 @@ deft_src.db.user = os.environ['PRODSYSPA_DEFT_USER']
 deft_src.db.passphrase = os.environ['PRODSYSPA_DEFT_PASS']
 
 deft_src.query = ConfigBase()
-deft_src.query.select_columns = ['*']
-deft_src.query.table = 't_production_task'
+deft_src.query.select_columns = [
+    'TASKID',
+    'JEDI_TASK_PARAMETERS'
+]
+deft_src.query.table = 't_task'
 deft_src.query.conditions = [
-    "(project like 'data%' OR project like 'mc%')"]
+    "(taskname like 'data%' OR taskname like 'mc%')",
+    "status in ('done', 'finished')"
+]
 deft_src.query.time_range_column = 'start_time'
 
 # data source #1 (JEDI)
@@ -49,7 +51,8 @@ deft_src.query.time_range_column = 'start_time'
 jedi_src = ConfigBase('jedi')  # name is used in parquet-converter
 jedi_src.options = [
     '--as-avrodatafile', ('-m', '1'),
-    ('--map-column-java', 'JEDITASKID=Long')]
+    ('--map-column-java', 'JEDITASKID=Long')
+]
 
 jedi_src.db = ConfigBase()
 jedi_src.db.jdbc = 'jdbc:oracle:thin:@//ADCR2-DG-S.cern.ch:10121/ADCR.cern.ch'
@@ -59,43 +62,16 @@ jedi_src.db.passphrase = os.environ['PRODSYSPA_JEDI_PASS']
 jedi_src.query = ConfigBase()
 jedi_src.query.select_columns = [
     'JEDITASKID',
-    'GSHARE',
-    'STATUS',
-    'USERNAME',
-    'REQID',
-    'CLOUD',
-    'SITE',
+    'TASKNAME',
     'STARTTIME',
-    'ENDTIME',
-    'PRODSOURCELABEL',
-    'WORKINGGROUP',
-    'CORECOUNT',
-    'PROCESSINGTYPE',
-    'TASKPRIORITY',
-    'ARCHITECTURE',
-    'TRANSUSES',
-    'TRANSHOME',
-    'TRANSPATH',
-    'SPLITRULE',
-    'WORKQUEUE_ID',
-    'ERRORDIALOG',
-    'PARENT_TID',
-    'EVENTSERVICE',
-    'TICKETID',
-    'TICKETSYSTEMTYPE',
-    'STATECHANGETIME',
-    'SUPERSTATUS',
-    'CAMPAIGN',
-    'GOAL',
-    'NUCLEUS',
-    'RAMCOUNT',
-    'RAMUNIT',
-    'WALLTIME',
-    'WALLTIMEUNIT']
+    'ENDTIME'
+]
 jedi_src.query.table = 'jedi_tasks'
 jedi_src.query.conditions = [
     "(taskname like 'data%' OR taskname like 'mc%')",
-    "endtime is not null"]
+    "status in ('done', 'finished')",
+    "endtime is not null"
+]
 jedi_src.query.time_range_column = 'starttime'
 
 # sqoop sources
@@ -107,5 +83,5 @@ config.sqoop.src1 = jedi_src
 
 config.pig = ConfigBase()
 config.pig.options = [
-    ('-f', '{0}/parquet-converter-default.pig'.
+    ('-f', '{0}/converter-model-cold.pig'.
      format(os.path.dirname(os.path.abspath(__file__))))]
