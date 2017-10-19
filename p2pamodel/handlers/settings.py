@@ -30,7 +30,8 @@ DataType = EnumTypes(
     ('Test', 'test'),
     ('Model', 'model'),
     ('Eval', 'eval'),
-    ('Input', 'input')
+    ('Input', 'input'),
+    ('Output', 'output'),
 )
 
 
