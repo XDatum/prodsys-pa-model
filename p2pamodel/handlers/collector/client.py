@@ -12,9 +12,9 @@
 # - Mikhail Titov, <mikhail.titov@cern.ch>, 2017
 #
 
-import os
-
+from ...tools import hdfs
 from ...utils import pyCMD
+
 from ..settings import (DataType,
                         HDFS_DATA_DIR,
                         HDFS_PRIVATE_DIR,
@@ -24,50 +24,6 @@ from .config import (DAYS_DEFAULT,
                      DAYS_OFFSET_DEFAULT)
 
 CONFIG_PKG_PATH = 'p2pamodel.handlers.collector.config'
-
-
-def create_hdfs_private_file(service_name, message):
-    """
-    Create private file at HDFS storage.
-
-    @param service_name: Service name.
-    @type service_name: str
-    @param message: Private message.
-    @type message: str
-    @return: Full file path.
-    @rtype: str
-    """
-    file_name = '{0}.sqoop'.format(service_name)
-    file_path = '{0}/{1}'.format(HDFS_PRIVATE_DIR, file_name)
-
-    with open(file_name, 'w') as f:
-        f.write(message)
-
-    pyCMD('hdfs', ['dfs', '-put', file_name, file_path]).execute()
-    pyCMD('hdfs', ['dfs', '-chown', '400', file_path]).execute()
-
-    os.remove(file_name)
-    return file_path
-
-
-def remove_hdfs_file(path):
-    """
-    Remove file from HDFS storage.
-
-    @param path: Full file path.
-    @type path: str
-    """
-    pyCMD('hdfs', ['dfs', '-rm', '-skipTrash', path]).execute()
-
-
-def remove_hdfs_dir(path):
-    """
-    Remove directory from HDFS storage.
-
-    @param path: Full dir path.
-    @type path: str
-    """
-    pyCMD('hdfs', ['dfs', '-rm', '-r', '-f', '-skipTrash', path]).execute()
 
 
 class Collector(object):
@@ -160,7 +116,8 @@ class Collector(object):
 
             src_name = '{0}'.format(source)
 
-            password_file = create_hdfs_private_file(
+            password_file = hdfs.create_private_file(
+                dir_name=HDFS_PRIVATE_DIR,
                 service_name=src_name,
                 message=source.db.passphrase)
 
@@ -176,7 +133,7 @@ class Collector(object):
             sqoop_client.add_options(*source.options)
             result = sqoop_client.execute()
 
-            remove_hdfs_file(password_file)
+            hdfs.remove_file(password_file)
 
             if self._verbose:
                 print('Running command: {0}'.format(
@@ -211,7 +168,7 @@ class Collector(object):
         Clean-up temporary files/dirs.
         """
         for source in self._config.sqoop:
-            remove_hdfs_dir(self._get_dir(source='{0}'.format(source)))
+            hdfs.remove_dir(self._get_dir(source='{0}'.format(source)))
 
     def execute(self, **kwargs):
         """
@@ -230,7 +187,7 @@ class Collector(object):
             output_type = DataType.Training
 
         if kwargs.get('force'):
-            remove_hdfs_dir(self._get_dir(output_type))
+            hdfs.remove_dir(self._get_dir(output_type))
 
         self.convert_data(output_dir_name=output_type)
 
