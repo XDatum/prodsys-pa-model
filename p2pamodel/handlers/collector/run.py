@@ -17,8 +17,7 @@ import argparse
 import sys
 
 from p2pamodel.handlers.collector.client import (Collector,
-                                                 DataType,
-                                                 TASK_STATE_SQL_MAPPING)
+                                                 DataType)
 
 
 def get_args():
@@ -55,7 +54,7 @@ def get_args():
     )
 
     parser.add_argument(
-        '--config',
+        '-c', '--config',
         dest='config',
         type=str,
         help='Configuration module name (in .config sub-pkg).',
@@ -75,14 +74,6 @@ def get_args():
         dest='days_offset',
         type=int,
         help='Number of days to offset.',
-        required=False
-    )
-
-    parser.add_argument(
-        '--task-state',
-        dest='task_state',
-        choices=TASK_STATE_SQL_MAPPING.keys(),
-        help='State of the requested records.',
         required=False
     )
 
@@ -111,7 +102,6 @@ def proceed(args):
 
     collector.execute(days=args.days,
                       days_offset=args.days_offset,
-                      task_state=args.task_state,
                       output_type=args.output_type,
                       force=args.force)
 

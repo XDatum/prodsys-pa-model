@@ -21,11 +21,9 @@ from ..settings import (DataType,
                         WORK_DIR_NAME_DEFAULT)
 
 from .config import (DAYS_DEFAULT,
-                     DAYS_OFFSET_DEFAULT,
-                     TASK_STATE_SQL_MAPPING)
+                     DAYS_OFFSET_DEFAULT)
 
 CONFIG_PKG_PATH = 'p2pamodel.handlers.collector.config'
-CONFIG_NAME_DEFAULT = 'training_default'
 
 
 def create_hdfs_private_file(service_name, message):
@@ -82,12 +80,14 @@ class Collector(object):
         @keyword config: Configuration module name (in .config sub-pkg).
         @keyword verbose: Flag to get (show) logs.
         """
+        if not kwargs.get('config'):
+            raise Exception('Configuration module name is not set.')
+
         self._work_dir = '{0}/{1}'.format(
             HDFS_DATA_DIR, kwargs.get('work_dir') or WORK_DIR_NAME_DEFAULT)
 
         self._config = getattr(__import__(
-            '{0}.{1}'.format(
-                CONFIG_PKG_PATH, kwargs.get('config') or CONFIG_NAME_DEFAULT),
+            '{0}.{1}'.format(CONFIG_PKG_PATH, kwargs['config']),
             fromlist=['config']), 'config')
 
         self._verbose = kwargs.get('verbose', False)
@@ -120,7 +120,7 @@ class Collector(object):
                 column_name,
                 '' if not days_offset else ' - {0}'.format(days_offset))])
 
-    def _get_sql_query(self, query_specs, days, days_offset, task_state):
+    def _get_sql_query(self, query_specs, days, days_offset):
         """
         Form SQL query for Sqoop command.
 
@@ -130,8 +130,6 @@ class Collector(object):
         @type days: int
         @param days_offset: Number of days to offset.
         @type days_offset: int
-        @param task_state: State of the requested tasks.
-        @type task_state: str
         @return: SQL query.
         @rtype: str
         """
@@ -142,14 +140,12 @@ class Collector(object):
                 [self._form_sql_time_period(
                     column_name=query_specs.time_range_column,
                     days=days,
-                    days_offset=days_offset),
-                 TASK_STATE_SQL_MAPPING[task_state]] +
+                    days_offset=days_offset)] +
                 query_specs.conditions +
-                ['$CONDITIONS']
-            )
+                ['$CONDITIONS'])
         )
 
-    def import_data(self, days, days_offset, task_state=None):
+    def import_data(self, days, days_offset):
         """
         Get data from DEfT/JEDI by Sqoop.
 
@@ -157,12 +153,7 @@ class Collector(object):
         @type days: int
         @param days_offset: Number of days to offset.
         @type days_offset: int
-        @param task_state: State of the requested tasks.
-        @type task_state: str/None
         """
-        if task_state not in TASK_STATE_SQL_MAPPING:
-            task_state = 'finished'
-
         sqoop_client = pyCMD(command='sqoop')
 
         for source in self._config.sqoop:
@@ -178,12 +169,10 @@ class Collector(object):
                 '--username': source.db.user,
                 '--password-file': password_file,
                 '--target-dir': self._get_dir(source=src_name),
-                '--query': self._get_sql_query(
-                    query_specs=source.query,
-                    days=days,
-                    days_offset=days_offset,
-                    task_state=task_state,
-                )})
+                '--query': self._get_sql_query(query_specs=source.query,
+                                               days=days,
+                                               days_offset=days_offset)
+            })
             sqoop_client.add_options(*source.options)
             result = sqoop_client.execute()
 
@@ -230,13 +219,11 @@ class Collector(object):
 
         @keyword days: Number of days for the requested period.
         @keyword days_offset: Number of days to offset.
-        @keyword task_state: State of the requested tasks.
         @keyword output_type: Data output type.
         @keyword force: Force to (re)create the output directory.
         """
         self.import_data(days=kwargs.get('days'),
-                         days_offset=kwargs.get('days_offset'),
-                         task_state=kwargs.get('task_state'))
+                         days_offset=kwargs.get('days_offset'))
 
         output_type = kwargs.get('output_type')
         if output_type not in DataType.attrs.values():
