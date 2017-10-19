@@ -64,16 +64,9 @@ def get_args():
     )
 
     parser.add_argument(
-        '--test-data-dir',
-        dest='test_data_dir',
-        help='Relative path of the directory with test data.',
-        required=False
-    )
-
-    parser.add_argument(
-        '--input-data-dir',
-        dest='input_data_dir',
-        help='Relative path of the directory with input data.',
+        '--data-dir',
+        dest='data_dir',
+        help='Relative path of the directory with any data.',
         required=False
     )
 
@@ -89,17 +82,15 @@ def proceed(args):
     """
 
     predictor = Predictor(work_dir=args.work_dir,
-                          test_data_dir=args.test_data_dir,
-                          input_data_dir=args.input_data_dir,
+                          data_dir=args.data_dir,
                           verbose=args.verbose)
 
     if args.train:
-        predictor.run_trainer(with_eval=args.with_eval,
-                              force=args.force)
+        predictor.run_trainer(with_eval=args.with_eval, force=args.force)
     elif args.evaluate:
         predictor.run_evaluator(force=args.force)
     else:
-        predictor.run_predictor()
+        predictor.run_predictor(force=args.force)
 
 
 if __name__ == '__main__':

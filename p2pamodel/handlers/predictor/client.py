@@ -19,8 +19,10 @@ from pyspark.mllib.tree import GradientBoostedTrees, GradientBoostedTreesModel
 from pyspark.mllib.tree import RandomForest, RandomForestModel
 from pyspark.mllib.regression import LabeledPoint
 
-from ...utils import pyCMD
+from ...tools import hdfs
+
 from ..settings import (DataType,
+                        DirType,
                         STORAGE_PATH_FORMAT,
                         WORK_DIR_NAME_DEFAULT)
 
@@ -29,6 +31,7 @@ from .config import (SERVICE_NAME,
                      LABELED_POINTS,
                      SELECT_PARAMS)
 
+TASK_ID_COLUMN = 'TASKID'
 IS_RF_METHOD = True
 
 if not IS_RF_METHOD:
@@ -45,16 +48,6 @@ _training_options = TRAINING_OPTIONS[_pa_key]
 sc = SparkContext(appName=SERVICE_NAME)
 
 
-def remove_hdfs_dir(path):
-    """
-    Remove directory from HDFS storage.
-
-    @param path: Full dir path.
-    @type path: str
-    """
-    pyCMD('hdfs', ['dfs', '-rm', '-r', '-f', '-skipTrash', path]).execute()
-
-
 class Predictor(object):
 
     def __init__(self, **kwargs):
@@ -62,28 +55,42 @@ class Predictor(object):
         Initialization.
 
         @keyword work_dir: Working directory name.
-        @keyword test_data_dir: Directory with test data.
-        @keyword input_data_dir: Directory with input/new data.
+        @keyword data_dir: Directory with any data.
         @keyword verbose: Flag to get (show) logs.
         """
+        self._model = None
+
         self._data = {}
         self._paths = {}
-        self._work_dir_path = STORAGE_PATH_FORMAT.format(
-            work_dir=kwargs.get('work_dir') or WORK_DIR_NAME_DEFAULT)
 
-        self._test_data_path = kwargs.get('test_data_dir')
-        self._input_data_path = kwargs.get('input_data_dir')
+        work_dir = kwargs.get('work_dir') or WORK_DIR_NAME_DEFAULT
+        self._set_dir_path(dir_type=DirType.Work, dir_name=work_dir)
+        self._set_dir_path(dir_type=DirType.Data, dir_name=kwargs.get('data_dir'))
 
         self._verbose = kwargs.get('verbose', False)
 
     @property
-    def _model(self):
-        return self._data.get(DataType.Model)
+    def _work_dir_path(self):
+        return self._paths.get(DirType.Work)
 
-    @_model.setter
-    def _model(self, value):
-        if value is not None:
-            self._data[DataType.Model] = value
+    @property
+    def _data_dir_path(self):
+        return self._paths.get(DirType.Data)
+
+    def _set_dir_path(self, dir_type, dir_name):
+        if dir_type and dir_name:
+            self._paths[dir_type] = STORAGE_PATH_FORMAT.format(dir_name=dir_name)
+
+    def _get_path(self, data_type):
+        base_dir_path = None
+
+        if data_type not in [DataType.Model, DataType.Eval]:
+            base_dir_path = self._data_dir_path
+
+        if base_dir_path is None:
+            base_dir_path = self._work_dir_path
+
+        return '{0}/{1}'.format(base_dir_path, data_type)
 
     @property
     def _training_data(self):
@@ -105,53 +112,18 @@ class Predictor(object):
 
     @property
     def _input_data(self):
-        return self._data.get(DataType.Input)
+        if DataType.Input in self._data:
+            return self._data[DataType.Input].map(lambda x: x[1])
 
     @_input_data.setter
     def _input_data(self, value):
         if value is not None:
             self._data[DataType.Input] = value
 
-    def _get_path(self, data_type):
-        output = None
-        if data_type in [DataType.Model, DataType.Eval, DataType.Training]:
-            output = '{0}/{1}'.format(self._work_dir_path, data_type)
-        elif data_type in [DataType.Test, DataType.Input]:
-            output = self._paths.get(data_type)
-        return output
-
-    def _set_path(self, data_type, dir_name):
-        if data_type in [DataType.Test, DataType.Input] and dir_name:
-            self._paths[data_type] = STORAGE_PATH_FORMAT.\
-                format(work_dir=dir_name)
-
     @property
-    def _model_path(self):
-        return self._get_path(data_type=DataType.Model)
-
-    @property
-    def _model_eval_path(self):
-        return self._get_path(data_type=DataType.Eval)
-
-    @property
-    def _training_data_path(self):
-        return self._get_path(data_type=DataType.Training)
-
-    @property
-    def _test_data_path(self):
-        return self._get_path(data_type=DataType.Test)
-
-    @_test_data_path.setter
-    def _test_data_path(self, value):
-        self._set_path(data_type=DataType.Test, dir_name=value)
-
-    @property
-    def _input_data_path(self):
-        return self._get_path(data_type=DataType.Input)
-
-    @_input_data_path.setter
-    def _input_data_path(self, value):
-        self._set_path(data_type=DataType.Input, dir_name=value)
+    def _input_data_ids(self):
+        if DataType.Input in self._data:
+            return self._data[DataType.Input].map(lambda x: x[0])
 
     def prepare_data(self, data_types):
         """
@@ -189,40 +161,35 @@ class Predictor(object):
 
         for data_type in data_types:
 
-            if (data_type not in DataType.attrs.values() or
-                    not self._get_path(data_type)):
+            if data_type not in DataType.attrs.values():
                 continue
 
             raw_data = sql_context.read.parquet(self._get_path(data_type))
-            #filtered_data = raw_data.filter(filter_query).select(*SELECT_PARAMS)
-            filtered_data = raw_data.select(*SELECT_PARAMS)
-            parsed_data = filtered_data.map(create_labeled_point)
 
-            if data_type == DataType.Training:
-                if DataType.Test in data_types and not self._test_data_path:
-                    self._training_data, self._test_data = \
-                        parsed_data.randomSplit([0.7, 0.3])
-                else:
-                #elif DataType.Test not in data_types:
+            select_params = SELECT_PARAMS[:]
+            if data_type == DataType.Input:
+                select_params.insert(0, TASK_ID_COLUMN)
+
+            #filtered_data = raw_data.filter(filter_query).select(*select_params)
+            filtered_data = raw_data.select(select_params)
+
+            if data_type == DataType.Input:
+                self._input_data = filtered_data.map(
+                    lambda x: (x[0], create_labeled_point(x[1:])))
+            else:
+                parsed_data = filtered_data.map(create_labeled_point)
+
+                if data_type == DataType.Training:
                     self._training_data = parsed_data
 
-            elif data_type == DataType.Test and self._test_data_path:
-                self._test_data = parsed_data
-
-            elif data_type == DataType.Input:
-                self._input_data = parsed_data
-
-# TODO: rework on the definition/setup of data of different types
-
-# if `data_types = [DataType.Test]` and `test_data_path` is not set
-# then there is no `test_data`; no `test_data_path` should work only
-# with `[DataType.Training, DataType.Test]`
+                elif data_type == DataType.Test:
+                    self._test_data = parsed_data
 
     def load_model(self):
         """
-        Load the model (by using model_path based on work_dir).
+        Load the model (by using model path based on work_dir).
         """
-        self._model = _pa_model.load(sc, self._model_path)
+        self._model = _pa_model.load(sc, self._get_path(DataType.Model))
 
     def create_model(self):
         """
@@ -246,7 +213,7 @@ class Predictor(object):
         except ValueError, e:
             raise Exception('[ERROR] Exception in model training: {0}'.format(e))
         else:
-            self._model.save(sc, self._model_path)
+            self._model.save(sc, self._get_path(DataType.Model))
 
     def get_predictions(self, is_eval=False):
         """
@@ -275,23 +242,18 @@ class Predictor(object):
                                    map(lambda x: x.label).
                                    zip(predictions))
         try:
-            file_path = ('{0}/labels_with_predictions'.
-                         format(self._model_eval_path))
-            lines = labels_with_predictions.map(to_csv_line)
-            lines.saveAsTextFile(file_path)
+            labels_with_predictions.map(to_csv_line).saveAsTextFile(
+                '{0}/labels_predictions'.format(self._get_path(DataType.Eval)))
         except:
             pass
 
         abs_errors = labels_with_predictions.map(lambda (v, p): v - p)
         rel_errors = labels_with_predictions.map(lambda (v, p): (v - p) / v)
         try:
-            file_path = ('{0}/abs_errors'.format(self._model_eval_path))
-            lines = abs_errors.map(to_csv_line)
-            lines.saveAsTextFile(file_path)
-
-            file_path = ('{0}/rel_errors'.format(self._model_eval_path))
-            lines = rel_errors.map(to_csv_line)
-            lines.saveAsTextFile(file_path)
+            abs_errors.map(to_csv_line).saveAsTextFile(
+                '{0}/abs_errors'.format(self._get_path(DataType.Eval)))
+            rel_errors.map(to_csv_line).saveAsTextFile(
+                '{0}/rel_errors'.format(self._get_path(DataType.Eval)))
         except:
             pass
 
@@ -303,18 +265,18 @@ class Predictor(object):
         """
         raise NotImplementedError
 
-    def run_trainer(self, with_eval=False, test_data_dir=None, **kwargs):
+    def run_trainer(self, with_eval=False, data_dir=None, **kwargs):
         """
         Run model training/testing process.
 
         @param with_eval: Flag to proceed model evaluation.
         @type with_eval: bool
-        @param test_data_dir: Directory with test data.
-        @type test_data_dir: str/None
+        @param data_dir: Directory with training/test data.
+        @type data_dir: str/None
 
         @keyword force: Force to (re)create the model directory.
         """
-        self._test_data_path = test_data_dir
+        self._set_dir_path(dir_type=DirType.Data, dir_name=data_dir)
 
         data_types = [DataType.Training]
         if with_eval:
@@ -322,25 +284,25 @@ class Predictor(object):
         self.prepare_data(data_types=data_types)
 
         if kwargs.get('force'):
-            remove_hdfs_dir(self._model_path)
+            hdfs.remove_dir(self._get_path(DataType.Model))
 
         self.create_model()
 
         if with_eval:
             self.evaluate_model()
 
-    def run_evaluator(self, reload_model=False, test_data_dir=None, **kwargs):
+    def run_evaluator(self, reload_model=False, data_dir=None, **kwargs):
         """
         Run model evaluation process.
 
         @param reload_model: Flag to force to re-load model.
         @type reload_model: bool
-        @param test_data_dir: Directory with test data.
-        @type test_data_dir: str/None
+        @param data_dir: Directory with test data.
+        @type data_dir: str/None
 
         @keyword force: Force to (re)create the eval directory.
         """
-        self._test_data_path = test_data_dir
+        self._set_dir_path(dir_type=DirType.Data, dir_name=data_dir)
 
         self.prepare_data(data_types=[DataType.Test])
 
@@ -348,29 +310,44 @@ class Predictor(object):
             self.load_model()
 
         if kwargs.get('force'):
-            remove_hdfs_dir(self._model_eval_path)
+            hdfs.remove_dir(self._get_path(DataType.Eval))
 
         self.evaluate_model()
 
-    def run_predictor(self, reload_model=False, input_data_dir=None):
+    def run_predictor(self, reload_model=False, data_dir=None, **kwargs):
         """
         Run prediction process.
 
         @param reload_model: Flag to force to re-load model.
         @type reload_model: bool
-        @param input_data_dir: Directory with input data.
-        @type input_data_dir: str/None
-        @return: Predictions.
-        @rtype: -
+        @param data_dir: Directory with input data.
+        @type data_dir: str/None
+
+        @keyword force: Force to (re)create the eval directory.
         """
-        self._input_data_path = input_data_dir
+        self._set_dir_path(dir_type=DirType.Data, dir_name=data_dir)
 
         self.prepare_data(data_types=[DataType.Input])
 
         if self._model is None or reload_model:
             self.load_model()
 
-        return self.get_predictions(is_eval=False)
+        predictions = self.get_predictions(is_eval=False)
+
+        ids_with_predictions = (self._input_data_ids.
+                                map(lambda x: int(x)).
+                                zip(predictions))
+
+        def to_csv_line(record):
+            if not isinstance(record, (list, tuple)):
+                record = [record]
+            return ','.join(str(r) for r in record)
+
+        if kwargs.get('force'):
+            hdfs.remove_dir(self._get_path(DataType.Output))
+
+        ids_with_predictions.map(to_csv_line).saveAsTextFile(
+            self._get_path(DataType.Output))
 
 
 # TODO: use database to store LABELED_POINTS data
