@@ -14,9 +14,3 @@
 
 DAYS_DEFAULT = 90
 DAYS_OFFSET_DEFAULT = 0
-
-TASK_STATE_SQL_MAPPING = {
-    'new': "status in ('registered', 'assigning')",
-    'in_progress': "status in ('submitting', 'running')",
-    'finished': "status in ('done', 'finished')"
-}
