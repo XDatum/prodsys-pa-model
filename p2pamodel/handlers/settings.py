@@ -21,7 +21,7 @@ HDFS_BASE_DIR = '/atlas/prodsys_model'
 HDFS_DATA_DIR = '{0}/data'.format(HDFS_BASE_DIR)
 HDFS_PRIVATE_DIR = '{0}/private'.format(HDFS_BASE_DIR)
 
-STORAGE_PATH_FORMAT = 'hdfs://{0}/{1}'.format(HDFS_DATA_DIR, '{work_dir}')
+STORAGE_PATH_FORMAT = 'hdfs://{0}/{1}'.format(HDFS_DATA_DIR, '{dir_name}')
 
 WORK_DIR_NAME_DEFAULT = dt.utcnow().strftime('%Y%m%d')
 
@@ -32,6 +32,11 @@ DataType = EnumTypes(
     ('Eval', 'eval'),
     ('Input', 'input'),
     ('Output', 'output'),
+)
+
+DirType = EnumTypes(
+    ('Work', 'work'),
+    ('Data', 'data')
 )
 
 
