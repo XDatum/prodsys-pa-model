@@ -38,7 +38,7 @@ def create_private_file(dir_name, service_name, message):
         f.write(message)
 
     pyCMD('hdfs', ['dfs', '-put', file_name, file_path]).execute()
-    pyCMD('hdfs', ['dfs', '-chown', '400', file_path]).execute()
+    pyCMD('hdfs', ['dfs', '-chmod', '400', file_path]).execute()
 
     os.remove(file_name)
     return file_path
