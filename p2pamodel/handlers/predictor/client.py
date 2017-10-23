@@ -31,7 +31,7 @@ from .config import (SERVICE_NAME,
                      LABELED_POINTS,
                      SELECT_PARAMS)
 
-TASK_ID_COLUMN = 'TASKID'
+TASK_COLUMNS_EXTRA = ['TASKID', 'SUBMITTIME']  # - same as in converter -
 IS_RF_METHOD = True
 
 if not IS_RF_METHOD:
@@ -79,7 +79,8 @@ class Predictor(object):
 
     def _set_dir_path(self, dir_type, dir_name):
         if dir_type and dir_name:
-            self._paths[dir_type] = STORAGE_PATH_FORMAT.format(dir_name=dir_name)
+            self._paths[dir_type] = STORAGE_PATH_FORMAT.\
+                format(dir_name=dir_name)
 
     def _get_path(self, data_type):
         base_dir_path = None
@@ -121,7 +122,7 @@ class Predictor(object):
             self._data[DataType.Input] = value
 
     @property
-    def _input_data_ids(self):
+    def _input_data_extra(self):
         if DataType.Input in self._data:
             return self._data[DataType.Input].map(lambda x: x[0])
 
@@ -168,14 +169,17 @@ class Predictor(object):
 
             select_params = SELECT_PARAMS[:]
             if data_type == DataType.Input:
-                select_params.insert(0, TASK_ID_COLUMN)
+                select_params[0:0] = TASK_COLUMNS_EXTRA
 
             #filtered_data = raw_data.filter(filter_query).select(*select_params)
             filtered_data = raw_data.select(select_params)
 
             if data_type == DataType.Input:
-                self._input_data = filtered_data.map(
-                    lambda x: (x[0], create_labeled_point(x[1:])))
+                num_col = len(TASK_COLUMNS_EXTRA)
+                self._input_data = filtered_data.\
+                    map(lambda x: (
+                        tuple(x[:num_col]), create_labeled_point(x[num_col:])
+                    ))
             else:
                 parsed_data = filtered_data.map(create_labeled_point)
 
@@ -334,20 +338,16 @@ class Predictor(object):
 
         predictions = self.get_predictions(is_eval=False)
 
-        ids_with_predictions = (self._input_data_ids.
-                                map(lambda x: int(x)).
-                                zip(predictions))
-
-        def to_csv_line(record):
-            if not isinstance(record, (list, tuple)):
-                record = [record]
-            return ','.join(str(r) for r in record)
+        ids_with_predictions = (self._input_data_extra.
+                                zip(predictions).
+                                map(lambda x: x[0] + (x[1],)))
 
         if kwargs.get('force'):
             hdfs.remove_dir(self._get_path(DataType.Output))
 
-        ids_with_predictions.map(to_csv_line).saveAsTextFile(
-            self._get_path(DataType.Output))
+        ids_with_predictions.\
+            map(lambda x: ','.join(str(r) for r in x)).\
+            saveAsTextFile(self._get_path(DataType.Output))
 
 
 # TODO: use database to store LABELED_POINTS data
