@@ -17,7 +17,7 @@ import sys
 
 from ...utils import ConfigBase
 
-api_credentials = ConfigBase('Config for loader')
+api_credentials = ConfigBase('Config for distributor module')
 api_credentials.user = os.environ['P2PA_PROVIDER_USER']
 api_credentials.passphrase = os.environ['P2PA_PROVIDER_PASS']
 

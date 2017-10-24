@@ -4,15 +4,15 @@
 
 
 # - get tasks to calculate duration thresholds (weekly) -
-00 07 * * 1 source /home/cronjobs/services/env.sh; $P2PA_MODEL_DIR/bin/get_threshold_set.sh
+00 06 * * 0 source /home/cronjobs/services/env.sh; $P2PA_MODEL_DIR/bin/get_threshold_set.sh
 
 
 # - create model [cold-prediction] with [projectType=data/mc] tasks (weekly) -
-00 08 * * 1 source /home/cronjobs/services/env.sh; $P2PA_MODEL_DIR/bin/create_model_cold.sh
+00 07 * * 0 source /home/cronjobs/services/env.sh; $P2PA_MODEL_DIR/bin/create_model_cold.sh
 
 
 # - get new [projectType=data/mc] tasks and make [cold] predictions (daily) -
-00 10 * * * source /home/cronjobs/services/env.sh; $P2PA_MODEL_DIR/bin/generate_predictions_cold.sh
+00 16 * * * source /home/cronjobs/services/env.sh; $P2PA_MODEL_DIR/bin/generate_predictions_cold.sh
 
 
 # --- end ---

@@ -75,6 +75,6 @@ class DEFTClient(object):
         body = {'ttcr_dict': ttcr_dict}
         return self._create_request('set_ttcr', owner, body)
 
-    def set_ttcj(self, owner, task_id, timestamp):
-        body = {'task_id': task_id, 'timestamp': timestamp}
+    def set_ttcj(self, owner, ttcj_dict):
+        body = {'ttcj_dict': ttcj_dict}
         return self._create_request('set_ttcj', owner, body)

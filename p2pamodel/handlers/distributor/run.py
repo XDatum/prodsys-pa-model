@@ -69,8 +69,8 @@ def proceed(args):
 
     if args.method == 'set_ttcr_dict':
         distributor.set_ttcr_dict()
-    elif args.method == 'set_ttcj_timestamp':
-        distributor.set_ttcj_timestamp()
+    elif args.method == 'set_ttcj_dict':
+        distributor.set_ttcj_dict()
 
 
 if __name__ == '__main__':

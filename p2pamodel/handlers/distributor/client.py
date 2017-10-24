@@ -71,18 +71,20 @@ class Distributor(object):
         self._provider.set_ttcr(owner=self._user,
                                 ttcr_dict=ttcr_dict)
 
-    def set_ttcj_timestamp(self):
+    def set_ttcj_dict(self):
         """
         Get text-file (<taskId,submitTime,duration>) and set ttcj_timestamp.
         """
+        ttcj_dict = {}
+
         for task_id, submit_time, duration in sc.\
                 textFile(self._source_path).\
                 map(lambda x: x.split(',')).\
                 filter(lambda x: len(x) > 1).\
                 collect():
 
-            task_id = int(task_id)
-            ttcj_timestamp = int((float(submit_time) + float(duration)) / 1e3)
-            self._provider.set_ttcj(owner=self._user,
-                                    task_id=task_id,
-                                    timestamp=ttcj_timestamp)
+            ttcj_dict[int(task_id)] = \
+                int((float(submit_time) + float(duration)) / 1e3)
+
+        self._provider.set_ttcj(owner=self._user,
+                                ttcj_dict=ttcj_dict)

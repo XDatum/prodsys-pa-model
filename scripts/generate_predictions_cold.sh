@@ -3,7 +3,7 @@
 MODEL_WORK_DIR=model_cold
 NEW_TASKS_WORK_DIR=new_tasks_cold
 QUERY_CONFIG=cfg_new_tasks_cold
-DISTR_METHOD=set_ttcj_timestamp
+DISTR_METHOD=set_ttcj_dict
 
 LOG_FILE=${P2PA_CRONJOBS_LOG_DIR}/generate_predictions_cold.log
 
