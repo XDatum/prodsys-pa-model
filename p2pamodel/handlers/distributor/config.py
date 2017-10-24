@@ -18,8 +18,8 @@ import sys
 from ...utils import ConfigBase
 
 api_credentials = ConfigBase('Config for loader')
-api_credentials.user = os.environ['PRODSYSPA_API_USER']
-api_credentials.passphrase = os.environ['PRODSYSPA_API_PASS']
+api_credentials.user = os.environ['P2PA_PROVIDER_USER']
+api_credentials.passphrase = os.environ['P2PA_PROVIDER_PASS']
 
 if not os.environ.get('SPARK_HOME'):
     os.environ['SPARK_HOME'] = '/usr/lib/spark'
