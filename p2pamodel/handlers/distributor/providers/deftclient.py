@@ -43,7 +43,7 @@ class DEFTClient(object):
             headers=self.headers,
             data=json.dumps({'action': action,
                              'owner': owner,
-                             'body': '%s'.format(json.dumps(body))}),
+                             'body': '{0}'.format(json.dumps(body))}),
             verify=self.verify_ssl_cert)
 
         if response.status_code == requests.codes.created:
