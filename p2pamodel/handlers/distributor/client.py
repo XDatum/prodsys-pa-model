@@ -12,8 +12,6 @@
 # - Mikhail Titov, <mikhail.titov@cern.ch>, 2017
 #
 
-from datetime import datetime, timedelta
-
 import numpy as np
 
 from pyspark import SparkContext
@@ -84,10 +82,7 @@ class Distributor(object):
                 collect():
 
             task_id = int(task_id)
-            ttcj_timestamp = (
-                datetime.fromtimestamp(int(float(submit_time) / 1e3)) +
-                timedelta(seconds=int(float(duration) / 1e3)))
-
+            ttcj_timestamp = int((float(submit_time) + float(duration)) / 1e3)
             self._provider.set_ttcj(owner=self._user,
                                     task_id=task_id,
                                     timestamp=ttcj_timestamp)
