@@ -68,8 +68,9 @@ class Distributor(object):
                 np.percentile(list(x), THRESHOLD_PERCENTILE)))
 
         ttcr_dict = prepared_data.collectAsMap()
-        self._provider.set_ttcr(owner=self._user,
-                                ttcr_dict=ttcr_dict)
+        if ttcr_dict:
+            self._provider.set_ttcr(owner=self._user,
+                                    ttcr_dict=ttcr_dict)
 
     def set_ttcj_dict(self):
         """
@@ -86,5 +87,6 @@ class Distributor(object):
             ttcj_dict[int(task_id)] = \
                 int((float(submit_time) + float(duration)) / 1e3)
 
-        self._provider.set_ttcj(owner=self._user,
-                                ttcj_dict=ttcj_dict)
+        if ttcj_dict:
+            self._provider.set_ttcj(owner=self._user,
+                                    ttcj_dict=ttcj_dict)
