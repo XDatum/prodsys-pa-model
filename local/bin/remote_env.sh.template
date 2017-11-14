@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+export P2PA_SRC_DEFT_USER=''
+export P2PA_SRC_DEFT_PASS=''
+export P2PA_SRC_JEDI_USER=''
+export P2PA_SRC_JEDI_PASS=''
+
+export P2PA_PROVIDER_USER=''
+export P2PA_PROVIDER_PASS=''

@@ -97,5 +97,5 @@ ENV/
 .idea/
 
 # Project stuff
-bin/remote_env.sh
+local/bin/remote_env.sh
 *_local.py
