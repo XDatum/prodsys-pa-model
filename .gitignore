@@ -97,5 +97,5 @@ ENV/
 .idea/
 
 # Project stuff
-local/bin/remote_env.sh
+private/creds_env.sh
 *_local.py
