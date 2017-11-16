@@ -49,7 +49,8 @@ class Distributor(object):
         self._user = kwargs.get('auth_user', api_credentials.user)
         self._provider = DEFTClient(
             auth_user=self._user,
-            auth_key=kwargs.get('auth_key', api_credentials.passphrase))
+            auth_key=kwargs.get('auth_key', api_credentials.passphrase),
+            base_url=api_credentials.url)
 
         self._verbose = kwargs.get('verbose', False)
 
