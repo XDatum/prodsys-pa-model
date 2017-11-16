@@ -156,6 +156,11 @@ class Predictor(object):
                 except:
                     record_data[idx] = len(LABELED_POINTS[label])
 
+            # - protection for "None" values -
+            for idx in range(len(record_data)):
+                if record_data[idx] is None:
+                    record_data[idx] = -1
+
             return LabeledPoint(record[0], [float(x) for x in record_data])
 
         sql_context = SQLContext(sc)

@@ -9,7 +9,7 @@ REGISTER '/afs/cern.ch/user/m/matitov/pig/lib/elephant-bird-*.jar';
 DEFINE decode_json com.twitter.elephantbird.pig.piggybank.JsonStringToMap();
 
 deft_tasks_v1 = LOAD '$deft_tasks' USING AvroStorage();
-deft_tasks_v2 = FOREACH deft_tasks_v1 GENERATE TASKID, decode_json(JEDI_TASK_PARAMETERS) AS TASK_PARAMETERS;
+deft_tasks_v2 = FOREACH deft_tasks_v1 GENERATE TASKID, SUBMIT_TIME, decode_json(JEDI_TASK_PARAMETERS) AS TASK_PARAMETERS;
 deft_tasks = FOREACH deft_tasks_v2 GENERATE
 TASKID,
 TASK_PARAMETERS#'USERNAME' AS USERNAME,
@@ -19,7 +19,11 @@ TASK_PARAMETERS#'PROCESSINGTYPE' AS PROCESSINGTYPE,
 TASK_PARAMETERS#'ARCHITECTURE' AS ARCHITECTURE,
 TASK_PARAMETERS#'TRANSPATH' AS TRANSPATH,
 TASK_PARAMETERS#'TRANSUSES' AS TRANSUSES,
-TASK_PARAMETERS#'CLOUD' AS CLOUD;
+TASK_PARAMETERS#'CLOUD' AS CLOUD,
+TASK_PARAMETERS#'RAMUNIT' AS RAMUNIT,
+TASK_PARAMETERS#'RAMCOUNT' AS RAMCOUNT,
+TASK_PARAMETERS#'CORECOUNT' AS CORECOUNT,
+((DaysBetween(ToDate(SUBMIT_TIME),ToDate(0L)) + 4L) % 7) as WEEKDAY;
 
 jedi_tasks = LOAD '$jedi_tasks' USING AvroStorage();
 
@@ -37,6 +41,10 @@ deft_tasks::PROCESSINGTYPE AS PROCESSINGTYPE,
 deft_tasks::ARCHITECTURE AS ARCHITECTURE,
 deft_tasks::TRANSPATH AS TRANSPATH,
 deft_tasks::TRANSUSES AS TRANSUSES,
-deft_tasks::CLOUD AS CLOUD;
+deft_tasks::CLOUD AS CLOUD,
+deft_tasks::RAMUNIT AS RAMUNIT,
+deft_tasks::RAMCOUNT AS RAMCOUNT,
+deft_tasks::CORECOUNT AS CORECOUNT,
+deft_tasks::WEEKDAY AS WEEKDAY;
 
-store prepared into '$out' using parquet.pig.ParquetStorer;
+STORE prepared INTO '$out' USING parquet.pig.ParquetStorer;

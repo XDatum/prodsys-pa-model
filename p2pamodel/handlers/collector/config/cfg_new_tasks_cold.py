@@ -30,7 +30,7 @@ deft_src.options = [
 ]
 
 deft_src.db = ConfigBase()
-deft_src.db.jdbc = 'jdbc:oracle:thin:@//ADCR2-DG-S.cern.ch:10121/ADCR.cern.ch'
+deft_src.db.jdbc = os.environ['P2PA_SRC_DEFT_JDBC']
 deft_src.db.user = os.environ['P2PA_SRC_DEFT_USER']
 deft_src.db.passphrase = os.environ['P2PA_SRC_DEFT_PASS']
 

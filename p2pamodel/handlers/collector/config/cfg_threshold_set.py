@@ -29,7 +29,7 @@ deft_src.options = [
 ]
 
 deft_src.db = ConfigBase()
-deft_src.db.jdbc = 'jdbc:oracle:thin:@//ADCR2-DG-S.cern.ch:10121/ADCR.cern.ch'
+deft_src.db.jdbc = os.environ['P2PA_SRC_DEFT_JDBC']
 deft_src.db.user = os.environ['P2PA_SRC_DEFT_USER']
 deft_src.db.passphrase = os.environ['P2PA_SRC_DEFT_PASS']
 
@@ -55,7 +55,7 @@ jedi_src.options = [
 ]
 
 jedi_src.db = ConfigBase()
-jedi_src.db.jdbc = 'jdbc:oracle:thin:@//ADCR2-DG-S.cern.ch:10121/ADCR.cern.ch'
+jedi_src.db.jdbc = os.environ['P2PA_SRC_JEDI_JDBC']
 jedi_src.db.user = os.environ['P2PA_SRC_JEDI_USER']
 jedi_src.db.passphrase = os.environ['P2PA_SRC_JEDI_PASS']
 
