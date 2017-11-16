@@ -32,6 +32,7 @@ DataType = EnumTypes(
     ('Eval', 'eval'),
     ('Input', 'input'),
     ('Output', 'output'),
+    ('Domain', 'domain'),
 )
 
 DirType = EnumTypes(
