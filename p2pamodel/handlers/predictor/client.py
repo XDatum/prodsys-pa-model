@@ -28,12 +28,13 @@ from ..settings import (DataType,
 
 from .config import (SERVICE_NAME,
                      TRAINING_OPTIONS,
-                     LABELED_POINTS,
-                     SELECT_PARAMS)
+                     LABEL_KEY_PARAMETERS,
+                     LABEL_PARAMETER,
+                     FEATURE_PARAMETERS)
 
-TASK_COLUMNS_EXTRA = ['TASKID', 'SUBMITTIME']  # - same as in converter -
+COL_SEPARATOR = ','
+
 IS_RF_METHOD = True
-
 if not IS_RF_METHOD:
     _pa_method = GradientBoostedTrees
     _pa_model = GradientBoostedTreesModel
@@ -59,13 +60,13 @@ class Predictor(object):
         @keyword verbose: Flag to get (show) logs.
         """
         self._model = None
-
-        self._data = {}
         self._paths = {}
 
         work_dir = kwargs.get('work_dir') or WORK_DIR_NAME_DEFAULT
-        self._set_dir_path(dir_type=DirType.Work, dir_name=work_dir)
-        self._set_dir_path(dir_type=DirType.Data, dir_name=kwargs.get('data_dir'))
+        self._set_dir_path(dir_type=DirType.Work,
+                           dir_name=work_dir)
+        self._set_dir_path(dir_type=DirType.Data,
+                           dir_name=kwargs.get('data_dir'))
 
         self._verbose = kwargs.get('verbose', False)
 
@@ -85,7 +86,7 @@ class Predictor(object):
     def _get_path(self, data_type):
         base_dir_path = None
 
-        if data_type not in [DataType.Model, DataType.Eval]:
+        if data_type not in [DataType.Model, DataType.Eval, DataType.Domain]:
             base_dir_path = self._data_dir_path
 
         if base_dir_path is None:
@@ -93,106 +94,93 @@ class Predictor(object):
 
         return '{0}/{1}'.format(base_dir_path, data_type)
 
-    @property
-    def _training_data(self):
-        return self._data.get(DataType.Training)
-
-    @_training_data.setter
-    def _training_data(self, value):
-        if value is not None:
-            self._data[DataType.Training] = value
-
-    @property
-    def _test_data(self):
-        return self._data.get(DataType.Test)
-
-    @_test_data.setter
-    def _test_data(self, value):
-        if value is not None:
-            self._data[DataType.Test] = value
-
-    @property
-    def _input_data(self):
-        if DataType.Input in self._data:
-            return self._data[DataType.Input].map(lambda x: x[1])
-
-    @_input_data.setter
-    def _input_data(self, value):
-        if value is not None:
-            self._data[DataType.Input] = value
-
-    @property
-    def _input_data_extra(self):
-        if DataType.Input in self._data:
-            return self._data[DataType.Input].map(lambda x: x[0])
-
-    def prepare_data(self, data_types):
+    def _generate_labeled_point_values(self, data, num_skip=None, save=False):
         """
-        Prepare data sets (training, test, input).
+        Generate a dictionary of valid (possible) values for defined features.
 
-        @param data_types: Flags to define which data should be prepared.
-        @type data_types: list
+        @param data: Input data.
+        @type data: DataFrame
+        @param num_skip: Number of elements to skip in data records.
+        @type num_skip: int/None (default=1)
+        @param save: Flag to save processed data (DataType.Domain).
+        @type save: bool
+        @return: Possible values for categorical features.
+        @rtype: dict
         """
-        # TODO: should be reworked
-        #filter_query = 'TASKID=PARENT_TID AND NUCLEUS IS NOT NULL'
+        output = {}
 
-        def create_labeled_point(record):
-            """
-            Transforms categorical features in a record to numbers (indices).
+        num_skip = num_skip or 1
+        for idx, (column_name, column_flag) in enumerate(FEATURE_PARAMETERS):
+            if column_flag:
+                output[column_name] = sorted(
+                    data.map(lambda x: x[idx + num_skip]).distinct().collect())
 
-            @param record: Data record.
-            @type record: list/tuple
-            @return: Object with corresponding labeled points.
-            @rtype: LabeledPoint
-            """
-            record_data = list(record[1:])
+                if None in output[column_name]:
+                    output[column_name].remove(None)
 
-            for label in LABELED_POINTS:
-                idx = label[0]
+        if save:
+            parsed_data = map(
+                lambda (k, v): COL_SEPARATOR.join(str(r) for r in [k] + v),
+                output.items())
+
+            rdd = sc.parallelize(parsed_data, 1)
+            rdd.saveAsTextFile(self._get_path(DataType.Domain))
+
+        return output
+
+    def _load_labeled_point_values(self):
+        """
+        Load valid (possible) values for defined features.
+
+        @return: Possible values for categorical features.
+        @rtype: dict
+        """
+        output = {}
+
+        for record in sc.\
+                textFile(self._get_path(DataType.Domain)).\
+                map(lambda x: x.split(COL_SEPARATOR)).\
+                filter(lambda x: len(x) > 1).\
+                collect():
+
+            output[record[0]] = record[1:]
+
+        return output
+
+    @staticmethod
+    def _create_labeled_point(record, valid_values, num_skip=None):
+        """
+        Transforms categorical features in a record to numbers (indices).
+
+        @param record: Data record.
+        @type record: list/tuple
+        @param valid_values: Set of valid (possible) values.
+        @type valid_values: dict
+        @param num_skip: Number of elements to skip in record (to get features).
+        @type num_skip: int/None (default=1)
+        @return: Object with corresponding labeled points.
+        @rtype: LabeledPoint
+        """
+        num_skip = num_skip if (num_skip and num_skip > 1) else 1
+
+        label_idx = num_skip - 1
+        features = list(record[num_skip:])
+
+        for idx, (column_name, column_flag) in enumerate(FEATURE_PARAMETERS):
+            if column_flag:
 
                 try:
-                    record_data[idx] = LABELED_POINTS[label].index(
-                        record_data[idx])
+                    features[idx] = valid_values[column_name].\
+                                    index(features[idx])
                 except:
-                    record_data[idx] = len(LABELED_POINTS[label])
+                    features[idx] = len(valid_values[column_name])
 
-            # - protection for "None" values -
-            for idx in range(len(record_data)):
-                if record_data[idx] is None:
-                    record_data[idx] = -1
-
-            return LabeledPoint(record[0], [float(x) for x in record_data])
-
-        sql_context = SQLContext(sc)
-
-        for data_type in data_types:
-
-            if data_type not in DataType.attrs.values():
-                continue
-
-            raw_data = sql_context.read.parquet(self._get_path(data_type))
-
-            select_params = SELECT_PARAMS[:]
-            if data_type == DataType.Input:
-                select_params[0:0] = TASK_COLUMNS_EXTRA
-
-            #filtered_data = raw_data.filter(filter_query).select(*select_params)
-            filtered_data = raw_data.select(select_params)
-
-            if data_type == DataType.Input:
-                num_col = len(TASK_COLUMNS_EXTRA)
-                self._input_data = filtered_data.\
-                    map(lambda x: (
-                        tuple(x[:num_col]), create_labeled_point(x[num_col:])
-                    ))
             else:
-                parsed_data = filtered_data.map(create_labeled_point)
 
-                if data_type == DataType.Training:
-                    self._training_data = parsed_data
+                if features[idx] in [None, 'None']:
+                    features[idx] = 0
 
-                elif data_type == DataType.Test:
-                    self._test_data = parsed_data
+        return LabeledPoint(record[label_idx], [float(x) for x in features])
 
     def load_model(self):
         """
@@ -202,67 +190,118 @@ class Predictor(object):
 
     def create_model(self):
         """
-        Create the model (by training data set).
+        Model creation (using training data set).
         """
-        def get_categorical_features_info():
-            """
-            Get categorical features info.
+        # load TRAINING data
+        sql_context = SQLContext(sc)
+        raw_data = sql_context.read.parquet(self._get_path(DataType.Training))
+        filtered_data = raw_data.select([LABEL_PARAMETER] +
+                                        map(lambda x: x[0], FEATURE_PARAMETERS))
 
-            @return: Feature id with the total number of elements.
-            @rtype: dict
-            """
-            return dict(
-                map(lambda x: (x[0], len(LABELED_POINTS[x]) + 1), LABELED_POINTS))
+        # generate valid values
+        valid_values = self._generate_labeled_point_values(
+            data=filtered_data, num_skip=1, save=True)
+
+        # convert categorical features to corresponding indices
+        convert_to_labeled_point = self._create_labeled_point
+        training_data = filtered_data.map(lambda x: convert_to_labeled_point(
+            record=x, valid_values=valid_values, num_skip=1))
+
+        # form parameter categorical_features_info for model creation
+        features_names = map(lambda x: x[0], FEATURE_PARAMETERS)
+        categorical_features_info = dict(map(
+            lambda x: (features_names.index(x), len(valid_values[x]) + 1),
+            valid_values))
 
         try:
             self._model = _pa_method.trainRegressor(
-                data=self._training_data,
-                categoricalFeaturesInfo=get_categorical_features_info(),
+                data=training_data,
+                categoricalFeaturesInfo=categorical_features_info,
                 **_training_options)
         except ValueError, e:
-            raise Exception('[ERROR] Exception in model training: {0}'.format(e))
+            raise Exception('[ERROR] Exception in model training: {0}'.
+                            format(e))
         else:
             self._model.save(sc, self._get_path(DataType.Model))
 
-    def get_predictions(self, is_eval=False):
-        """
-        Create predictions for test or input data sets.
-
-        @param is_eval: Flag for model evaluation process.
-        @type is_eval: bool
-        @return: Predictions.
-        @rtype: -
-        """
-        _data = self._test_data if is_eval else self._input_data
-        return self._model.predict(_data.map(lambda x: x.features))
-
     def evaluate_model(self):
         """
-        Model evaluation process.
+        Model evaluation (using test data set).
         """
-        def to_csv_line(record):
-            if not isinstance(record, (list, tuple)):
-                record = [record]
-            return ','.join(str(r) for r in record)
+        # load TEST data
+        sql_context = SQLContext(sc)
+        raw_data = sql_context.read.parquet(self._get_path(DataType.Test))
+        filtered_data = raw_data.select([LABEL_PARAMETER] +
+                                        map(lambda x: x[0], FEATURE_PARAMETERS))
 
-        predictions = self.get_predictions(is_eval=True)
+        # get/load valid values
+        valid_values = self._load_labeled_point_values()
 
-        labels_with_predictions = (self._test_data.
+        # convert categorical features to corresponding indices
+        convert_to_labeled_point = self._create_labeled_point
+        test_data = filtered_data.map(lambda x: convert_to_labeled_point(
+            record=x, valid_values=valid_values, num_skip=1))
+
+        # calculate predictions
+        predictions = self._model.predict(test_data.map(lambda x: x.features))
+
+        labels_with_predictions = (test_data.
                                    map(lambda x: x.label).
                                    zip(predictions))
         try:
-            labels_with_predictions.map(to_csv_line).saveAsTextFile(
-                '{0}/labels_predictions'.format(self._get_path(DataType.Eval)))
+            labels_with_predictions.\
+                map(lambda x: COL_SEPARATOR.join(str(r) for r in x)).\
+                saveAsTextFile('{0}/labels_predictions'.
+                               format(self._get_path(DataType.Eval)))
         except:
             pass
 
         abs_errors = labels_with_predictions.map(lambda (v, p): v - p)
         rel_errors = labels_with_predictions.map(lambda (v, p): (v - p) / v)
         try:
-            abs_errors.map(to_csv_line).saveAsTextFile(
-                '{0}/abs_errors'.format(self._get_path(DataType.Eval)))
-            rel_errors.map(to_csv_line).saveAsTextFile(
-                '{0}/rel_errors'.format(self._get_path(DataType.Eval)))
+            abs_errors.\
+                map(lambda x: COL_SEPARATOR.join(str(r) for r in x)).\
+                saveAsTextFile('{0}/abs_errors'.
+                               format(self._get_path(DataType.Eval)))
+            rel_errors.\
+                map(lambda x: COL_SEPARATOR.join(str(r) for r in x)).\
+                saveAsTextFile('{0}/rel_errors'.
+                               format(self._get_path(DataType.Eval)))
+        except:
+            pass
+
+    def generate_predictions(self):
+        """
+        Predictions generation (for input data set).
+        """
+        # load INPUT data
+        sql_context = SQLContext(sc)
+        raw_data = sql_context.read.parquet(self._get_path(DataType.Input))
+        filtered_data = raw_data.select(LABEL_KEY_PARAMETERS +
+                                        [LABEL_PARAMETER] +
+                                        map(lambda x: x[0], FEATURE_PARAMETERS))
+
+        # get/load valid values
+        valid_values = self._load_labeled_point_values()
+
+        # convert categorical features to corresponding indices
+        num_key_params = len(LABEL_KEY_PARAMETERS)
+        convert_to_labeled_point = self._create_labeled_point
+        input_data = filtered_data.map(lambda x: convert_to_labeled_point(
+            record=x, valid_values=valid_values, num_skip=num_key_params + 1))
+
+        # calculate predictions
+        predictions = self._model.predict(input_data.map(lambda x: x.features))
+
+        input_key_data = filtered_data.map(lambda x: tuple(x[:num_key_params]))
+        key_data_with_predictions = (input_key_data.
+                                     zip(predictions).
+                                     map(lambda x: x[0] + (x[1],)))
+
+        try:
+            key_data_with_predictions.\
+                map(lambda x: COL_SEPARATOR.join(str(r) for r in x)).\
+                saveAsTextFile(self._get_path(DataType.Output))
         except:
             pass
 
@@ -287,12 +326,8 @@ class Predictor(object):
         """
         self._set_dir_path(dir_type=DirType.Data, dir_name=data_dir)
 
-        data_types = [DataType.Training]
-        if with_eval:
-            data_types.append(DataType.Test)
-        self.prepare_data(data_types=data_types)
-
         if kwargs.get('force'):
+            hdfs.remove_dir(self._get_path(DataType.Domain))
             hdfs.remove_dir(self._get_path(DataType.Model))
 
         self.create_model()
@@ -312,8 +347,6 @@ class Predictor(object):
         @keyword force: Force to (re)create the eval directory.
         """
         self._set_dir_path(dir_type=DirType.Data, dir_name=data_dir)
-
-        self.prepare_data(data_types=[DataType.Test])
 
         if self._model is None or reload_model:
             self.load_model()
@@ -336,28 +369,10 @@ class Predictor(object):
         """
         self._set_dir_path(dir_type=DirType.Data, dir_name=data_dir)
 
-        self.prepare_data(data_types=[DataType.Input])
-
         if self._model is None or reload_model:
             self.load_model()
-
-        predictions = self.get_predictions(is_eval=False)
-
-        ids_with_predictions = (self._input_data_extra.
-                                zip(predictions).
-                                map(lambda x: x[0] + (x[1],)))
 
         if kwargs.get('force'):
             hdfs.remove_dir(self._get_path(DataType.Output))
 
-        ids_with_predictions.\
-            map(lambda x: ','.join(str(r) for r in x)).\
-            saveAsTextFile(self._get_path(DataType.Output))
-
-
-# TODO: use database to store LABELED_POINTS data
-def prepare_labeled_points():
-    """
-    Prepare labeled points.
-    """
-    raise NotImplementedError
+        self.generate_predictions()
