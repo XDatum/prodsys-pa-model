@@ -16,9 +16,17 @@ import os
 
 from ....utils import ConfigBase
 
+COMMON_QUERY_CONDITIONS = [
+    "(taskname like 'data%' OR taskname like 'mc%')"
+    "status not in ('aborted', 'done', 'finished', 'obsolete')"
+]
+
+
+# collector configuration
 
 config = ConfigBase('Config for two sources: DEfT x 2')
 config.sqoop = ConfigBase()
+
 
 # data source #0 (DEfT/t_task)
 
@@ -42,10 +50,9 @@ deft0_src.query.select_columns = [
     'TIMESTAMP'
 ]
 deft0_src.query.table = 't_task'
-deft0_src.query.conditions = [
-    "(taskname like 'data%' OR taskname like 'mc%')"
-]
+deft0_src.query.conditions = COMMON_QUERY_CONDITIONS
 deft0_src.query.time_range_column = 'submit_time'
+
 
 # data source #1 (DEfT/t_production_task)
 
@@ -66,15 +73,15 @@ deft1_src.query.select_columns = [
     'TOTAL_REQ_EVENTS'
 ]
 deft1_src.query.table = 't_production_task'
-deft1_src.query.conditions = [
-    "(taskname like 'data%' OR taskname like 'mc%')"
-]
+deft1_src.query.conditions = COMMON_QUERY_CONDITIONS
 deft1_src.query.time_range_column = 'submit_time'
+
 
 # sqoop source(s)
 
 config.sqoop.src0 = deft0_src
 config.sqoop.src1 = deft1_src
+
 
 # pig options
 

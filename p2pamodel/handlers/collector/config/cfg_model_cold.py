@@ -16,9 +16,17 @@ import os
 
 from ....utils import ConfigBase
 
+COMMON_QUERY_CONDITIONS = [
+    "(taskname like 'data%' OR taskname like 'mc%')",
+    "status in ('done', 'finished')"
+]
+
+
+# collector configuration
 
 config = ConfigBase('Config for three sources: DEfT x 2, JEDI')
 config.sqoop = ConfigBase()
+
 
 # data source #0 (DEfT/t_task)
 
@@ -40,11 +48,9 @@ deft0_src.query.select_columns = [
     'JEDI_TASK_PARAMETERS'
 ]
 deft0_src.query.table = 't_task'
-deft0_src.query.conditions = [
-    "(taskname like 'data%' OR taskname like 'mc%')",
-    "status in ('done', 'finished')"
-]
+deft0_src.query.conditions = COMMON_QUERY_CONDITIONS
 deft0_src.query.time_range_column = 'start_time'
+
 
 # data source #1 (DEfT/t_production_task)
 
@@ -65,11 +71,9 @@ deft1_src.query.select_columns = [
     'TOTAL_REQ_EVENTS'
 ]
 deft1_src.query.table = 't_production_task'
-deft1_src.query.conditions = [
-    "(taskname like 'data%' OR taskname like 'mc%')",
-    "status in ('done', 'finished')"
-]
+deft1_src.query.conditions = COMMON_QUERY_CONDITIONS
 deft1_src.query.time_range_column = 'start_time'
+
 
 # data source #2 (JEDI/jedi_tasks)
 
@@ -92,18 +96,18 @@ jedi_src.query.select_columns = [
     'ENDTIME'
 ]
 jedi_src.query.table = 'jedi_tasks'
-jedi_src.query.conditions = [
-    "(taskname like 'data%' OR taskname like 'mc%')",
-    "status in ('done', 'finished')",
+jedi_src.query.conditions = COMMON_QUERY_CONDITIONS + [
     "endtime is not null"
 ]
 jedi_src.query.time_range_column = 'starttime'
+
 
 # sqoop sources
 
 config.sqoop.src0 = deft0_src
 config.sqoop.src1 = deft1_src
 config.sqoop.src2 = jedi_src
+
 
 # pig options
 
