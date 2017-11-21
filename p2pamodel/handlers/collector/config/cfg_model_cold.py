@@ -17,37 +17,61 @@ import os
 from ....utils import ConfigBase
 
 
-config = ConfigBase('Config for two sources: DEfT, JEDI')
+config = ConfigBase('Config for three sources: DEfT x 2, JEDI')
 config.sqoop = ConfigBase()
 
-# data source #0 (DEfT)
+# data source #0 (DEfT/t_task)
 
-deft_src = ConfigBase('deft')  # name is used in parquet-converter
-deft_src.options = [
+deft0_src = ConfigBase('deft0')  # name is used in parquet-converter
+deft0_src.options = [
     '--as-avrodatafile', ('-m', '1'),
     ('--map-column-java', 'TASKID=Long,JEDI_TASK_PARAMETERS=String'),
     ('--inline-lob-limit', '0')
 ]
 
-deft_src.db = ConfigBase()
-deft_src.db.jdbc = os.environ['P2PA_SRC_DEFT_JDBC']
-deft_src.db.user = os.environ['P2PA_SRC_DEFT_USER']
-deft_src.db.passphrase = os.environ['P2PA_SRC_DEFT_PASS']
+deft0_src.db = ConfigBase()
+deft0_src.db.jdbc = os.environ['P2PA_SRC_DEFT_JDBC']
+deft0_src.db.user = os.environ['P2PA_SRC_DEFT_USER']
+deft0_src.db.passphrase = os.environ['P2PA_SRC_DEFT_PASS']
 
-deft_src.query = ConfigBase()
-deft_src.query.select_columns = [
+deft0_src.query = ConfigBase()
+deft0_src.query.select_columns = [
     'TASKID',
-    'JEDI_TASK_PARAMETERS',
-    'SUBMIT_TIME'
+    'JEDI_TASK_PARAMETERS'
 ]
-deft_src.query.table = 't_task'
-deft_src.query.conditions = [
+deft0_src.query.table = 't_task'
+deft0_src.query.conditions = [
     "(taskname like 'data%' OR taskname like 'mc%')",
     "status in ('done', 'finished')"
 ]
-deft_src.query.time_range_column = 'start_time'
+deft0_src.query.time_range_column = 'start_time'
 
-# data source #1 (JEDI)
+# data source #1 (DEfT/t_production_task)
+
+deft1_src = ConfigBase('deft1')  # name is used in parquet-converter
+deft1_src.options = [
+    '--as-avrodatafile', ('-m', '1'),
+    ('--map-column-java', 'TASKID=Long')
+]
+
+deft1_src.db = ConfigBase()
+deft1_src.db.jdbc = os.environ['P2PA_SRC_DEFT_JDBC']
+deft1_src.db.user = os.environ['P2PA_SRC_DEFT_USER']
+deft1_src.db.passphrase = os.environ['P2PA_SRC_DEFT_PASS']
+
+deft1_src.query = ConfigBase()
+deft1_src.query.select_columns = [
+    'TASKID',
+    'TOTAL_REQ_EVENTS'
+]
+deft1_src.query.table = 't_production_task'
+deft1_src.query.conditions = [
+    "(taskname like 'data%' OR taskname like 'mc%')",
+    "status in ('done', 'finished')"
+]
+deft1_src.query.time_range_column = 'start_time'
+
+# data source #2 (JEDI/jedi_tasks)
 
 jedi_src = ConfigBase('jedi')  # name is used in parquet-converter
 jedi_src.options = [
@@ -77,8 +101,9 @@ jedi_src.query.time_range_column = 'starttime'
 
 # sqoop sources
 
-config.sqoop.src0 = deft_src
-config.sqoop.src1 = jedi_src
+config.sqoop.src0 = deft0_src
+config.sqoop.src1 = deft1_src
+config.sqoop.src2 = jedi_src
 
 # pig options
 

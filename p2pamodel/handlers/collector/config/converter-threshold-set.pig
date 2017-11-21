@@ -16,4 +16,4 @@ REGEX_EXTRACT(jedi_tasks::TASKNAME, '^(.*?\\.){3}(.*?)\\.',2) AS PRODUCTIONSTEP,
 deft_tasks::PROVENANCE AS PROVENANCE,
 (jedi_tasks::ENDTIME - jedi_tasks::STARTTIME) AS DURATION;
 
-store prepared into '$out' using parquet.pig.ParquetStorer;
+STORE prepared INTO '$out' USING parquet.pig.ParquetStorer;

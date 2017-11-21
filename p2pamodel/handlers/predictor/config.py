@@ -49,9 +49,9 @@ FEATURE_PARAMETERS = [
     ('ARCHITECTURE', 1),
     ('TRANSPATH', 1),
     ('TRANSUSES', 1),
-    ('CLOUD', 1),
-    ('RAMUNIT', 1),
     ('CORECOUNT', 1),
     ('RAMCOUNT', 0),
-    ('WEEKDAY', 0)
+    ('RAMUNIT', 1),
+    ('PRIORITY', 0),
+    ('TOTALREQEVENTS', 0)
 ]
