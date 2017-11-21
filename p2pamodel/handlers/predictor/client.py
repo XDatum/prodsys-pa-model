@@ -333,7 +333,9 @@ class Predictor(object):
         self.create_model()
 
         if with_eval:
-            self.evaluate_model()
+            self.run_evaluator(reload_model=False,
+                               data_dir=data_dir,
+                               force=kwargs.get('force'))
 
     def run_evaluator(self, reload_model=False, data_dir=None, **kwargs):
         """
