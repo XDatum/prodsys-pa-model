@@ -17,7 +17,7 @@ import os
 from ....utils import ConfigBase
 
 COMMON_QUERY_CONDITIONS = [
-    "(taskname like 'data%' OR taskname like 'mc%')"
+    "(taskname like 'data%' OR taskname like 'mc%')",
     "status in ('done', 'finished')"
 ]
 
