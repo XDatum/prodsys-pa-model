@@ -16,11 +16,19 @@ import os
 
 from ....utils import ConfigBase
 
+COMMON_QUERY_CONDITIONS = [
+    "(taskname like 'data%' OR taskname like 'mc%')"
+    "status in ('done', 'finished')"
+]
+
+
+# collector configuration
 
 config = ConfigBase('Config for two sources: DEfT, JEDI')
 config.sqoop = ConfigBase()
 
-# data source #0 (DEfT)
+
+# data source #0 (DEfT/t_production_task)
 
 deft_src = ConfigBase('deft')  # name is used in parquet-converter
 deft_src.options = [
@@ -40,13 +48,11 @@ deft_src.query.select_columns = [
     'PROVENANCE'
 ]
 deft_src.query.table = 't_production_task'
-deft_src.query.conditions = [
-    "(taskname like 'data%' OR taskname like 'mc%')",
-    "status in ('done', 'finished')"
-]
+deft_src.query.conditions = COMMON_QUERY_CONDITIONS
 deft_src.query.time_range_column = 'start_time'
 
-# data source #1 (JEDI)
+
+# data source #1 (JEDI/jedi_tasks)
 
 jedi_src = ConfigBase('jedi')  # name is used in parquet-converter
 jedi_src.options = [
@@ -68,17 +74,17 @@ jedi_src.query.select_columns = [
     'WORKINGGROUP'
 ]
 jedi_src.query.table = 'jedi_tasks'
-jedi_src.query.conditions = [
-    "(taskname like 'data%' OR taskname like 'mc%')",
-    "status in ('done', 'finished')",
+jedi_src.query.conditions = COMMON_QUERY_CONDITIONS + [
     "endtime is not null"
 ]
 jedi_src.query.time_range_column = 'starttime'
+
 
 # sqoop sources
 
 config.sqoop.src0 = deft_src
 config.sqoop.src1 = jedi_src
+
 
 # pig options
 
