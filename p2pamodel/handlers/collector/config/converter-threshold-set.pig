@@ -5,15 +5,12 @@ REGISTER '/usr/lib/pig/lib/json-*.jar';
 REGISTER '/usr/lib/pig/lib/jython-*.jar';
 REGISTER '/usr/lib/pig/lib/snappy-*.jar';
 
-deft_tasks = LOAD '$deft_tasks' USING AvroStorage();
 jedi_tasks = LOAD '$jedi_tasks' USING AvroStorage();
 
-joint = JOIN deft_tasks BY TASKID, jedi_tasks BY JEDITASKID;
-
-prepared = FOREACH joint GENERATE
-REGEX_EXTRACT(jedi_tasks::TASKNAME, '^(.*?)\\.',1) AS PROJECT,
-REGEX_EXTRACT(jedi_tasks::TASKNAME, '^(.*?\\.){3}(.*?)\\.',2) AS PRODUCTIONSTEP,
-deft_tasks::PROVENANCE AS PROVENANCE,
-(jedi_tasks::ENDTIME - jedi_tasks::STARTTIME) AS DURATION;
+prepared = FOREACH jedi_tasks GENERATE
+REGEX_EXTRACT(TASKNAME, '^(.*?)\\.',1) AS PROJECT,
+REGEX_EXTRACT(TASKNAME, '^(.*?\\.){3}(.*?)\\.',2) AS PRODUCTIONSTEP,
+WORKINGGROUP AS WORKINGGROUP,
+(ENDTIME - STARTTIME) AS DURATION;
 
 STORE prepared INTO '$out' USING parquet.pig.ParquetStorer;

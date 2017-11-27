@@ -24,35 +24,11 @@ COMMON_QUERY_CONDITIONS = [
 
 # collector configuration
 
-config = ConfigBase('Config for two sources: DEfT, JEDI')
+config = ConfigBase('Config for one source: JEDI')
 config.sqoop = ConfigBase()
 
 
-# data source #0 (DEfT/t_production_task)
-
-deft_src = ConfigBase('deft')  # name is used in parquet-converter
-deft_src.options = [
-    '--as-avrodatafile', ('-m', '1'),
-    ('--map-column-java', 'TASKID=Long')
-]
-
-deft_src.db = ConfigBase()
-deft_src.db.jdbc = os.environ['P2PA_SRC_DEFT_JDBC']
-deft_src.db.user = os.environ['P2PA_SRC_DEFT_USER']
-deft_src.db.passphrase = os.environ['P2PA_SRC_DEFT_PASS']
-
-deft_src.query = ConfigBase()
-deft_src.query.select_columns = [
-    'TASKID',
-    'TASKNAME',
-    'PROVENANCE'
-]
-deft_src.query.table = 't_production_task'
-deft_src.query.conditions = COMMON_QUERY_CONDITIONS
-deft_src.query.time_range_column = 'start_time'
-
-
-# data source #1 (JEDI/jedi_tasks)
+# data source #0 (JEDI/jedi_tasks)
 
 jedi_src = ConfigBase('jedi')  # name is used in parquet-converter
 jedi_src.options = [
@@ -82,8 +58,7 @@ jedi_src.query.time_range_column = 'starttime'
 
 # sqoop sources
 
-config.sqoop.src0 = deft_src
-config.sqoop.src1 = jedi_src
+config.sqoop.src0 = jedi_src
 
 
 # pig options
