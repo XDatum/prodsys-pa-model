@@ -148,7 +148,7 @@ class Predictor(object):
         return output
 
     @staticmethod
-    def _create_labeled_point(record, valid_values, num_skip=None):
+    def _create_labeled_point(record, valid_values):
         """
         Transforms categorical features in a record to numbers (indices).
 
@@ -156,31 +156,33 @@ class Predictor(object):
         @type record: list/tuple
         @param valid_values: Set of valid (possible) values.
         @type valid_values: dict
-        @param num_skip: Number of elements to skip in record (to get features).
-        @type num_skip: int/None (default=1)
         @return: Object with corresponding labeled points.
         @rtype: LabeledPoint
         """
-        num_skip = num_skip if (num_skip and num_skip > 1) else 1
-
-        label_idx = num_skip - 1
-        features = list(record[num_skip:])
+        features = list(record[-len(FEATURE_PARAMETERS):])
 
         for idx, (column_name, column_flag) in enumerate(FEATURE_PARAMETERS):
             if column_flag:
 
                 try:
-                    features[idx] = valid_values[column_name].\
-                                    index(features[idx])
-                except:
-                    features[idx] = len(valid_values[column_name])
+                    features[idx] = float(valid_values[column_name].
+                                          index(features[idx]))
+                except ValueError:
+                    features[idx] = float(len(valid_values[column_name]))
 
             else:
 
                 if features[idx] in [None, 'None']:
-                    features[idx] = 0
+                    features[idx] = 0.
+                else:
+                    try:
+                        features[idx] = float(features[idx])
+                    except Exception, e:
+                        raise Exception('[Predictor._create_labeled_point] ' +
+                                        '{0} ({1}: {2})'.
+                                        format(e, column_name, features[idx]))
 
-        return LabeledPoint(record[label_idx], [float(x) for x in features])
+        return LabeledPoint(record[-len(FEATURE_PARAMETERS) - 1] or 0, features)
 
     def load_model(self):
         """
@@ -205,7 +207,7 @@ class Predictor(object):
         # convert categorical features to corresponding indices
         convert_to_labeled_point = self._create_labeled_point
         training_data = filtered_data.map(lambda x: convert_to_labeled_point(
-            record=x, valid_values=valid_values, num_skip=1))
+            record=x, valid_values=valid_values))
 
         # form parameter categorical_features_info for model creation
         features_names = map(lambda x: x[0], FEATURE_PARAMETERS)
@@ -240,7 +242,7 @@ class Predictor(object):
         # convert categorical features to corresponding indices
         convert_to_labeled_point = self._create_labeled_point
         test_data = filtered_data.map(lambda x: convert_to_labeled_point(
-            record=x, valid_values=valid_values, num_skip=1))
+            record=x, valid_values=valid_values))
 
         # calculate predictions
         predictions = self._model.predict(test_data.map(lambda x: x.features))
@@ -285,14 +287,14 @@ class Predictor(object):
         valid_values = self._load_labeled_point_values()
 
         # convert categorical features to corresponding indices
-        num_key_params = len(LABEL_KEY_PARAMETERS)
         convert_to_labeled_point = self._create_labeled_point
         input_data = filtered_data.map(lambda x: convert_to_labeled_point(
-            record=x, valid_values=valid_values, num_skip=num_key_params + 1))
+            record=x, valid_values=valid_values))
 
         # calculate predictions
         predictions = self._model.predict(input_data.map(lambda x: x.features))
 
+        num_key_params = len(LABEL_KEY_PARAMETERS)
         input_key_data = filtered_data.map(lambda x: tuple(x[:num_key_params]))
         key_data_with_predictions = (input_key_data.
                                      zip(predictions).
