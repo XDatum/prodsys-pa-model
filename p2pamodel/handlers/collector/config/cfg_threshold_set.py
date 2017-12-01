@@ -51,6 +51,7 @@ jedi_src.query.select_columns = [
 ]
 jedi_src.query.table = 'jedi_tasks'
 jedi_src.query.conditions = COMMON_QUERY_CONDITIONS + [
+    "starttime is not null",
     "endtime is not null"
 ]
 jedi_src.query.time_range_column = 'starttime'
