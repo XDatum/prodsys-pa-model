@@ -11,8 +11,8 @@
 00 07 * * 0 source /home/cronjobs/services/env.sh; $P2PA_MODEL_DIR/bin/create_model_cold.sh
 
 
-# - get new [projectType=data/mc] tasks and make [cold] predictions (daily) -
-00 16 * * * source /home/cronjobs/services/env.sh; $P2PA_MODEL_DIR/bin/generate_predictions_cold.sh
+# - get new [projectType=data/mc] tasks and make [cold] predictions (twice-daily) -
+00 04,16 * * * source /home/cronjobs/services/env.sh; $P2PA_MODEL_DIR/bin/generate_predictions_cold.sh
 
 
 # --- end ---
