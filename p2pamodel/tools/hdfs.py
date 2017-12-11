@@ -31,7 +31,7 @@ def create_private_file(dir_name, service_name, message):
     @return: Full file path.
     @rtype: str
     """
-    file_name = '{0}{1}.sqoop'.format(service_name, int(time.time()))
+    file_name = '{0}{1}.prv'.format(service_name, int(time.time()))
     file_path = '{0}/{1}'.format(dir_name, file_name)
 
     with open(file_name, 'w') as f:
