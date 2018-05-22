@@ -98,4 +98,3 @@ ENV/
 
 # Project stuff
 private/creds_env.sh
-*_local.py
