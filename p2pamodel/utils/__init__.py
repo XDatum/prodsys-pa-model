@@ -10,5 +10,4 @@
 #
 
 from .cmdwrapper import SimpleCMDWrapper as pyCMD
-from .configbase import ConfigBase
 from .enum import EnumTypes
