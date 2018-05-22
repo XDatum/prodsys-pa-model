@@ -9,12 +9,12 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Authors:
-# - Mikhail Titov, <mikhail.titov@cern.ch>, 2017
+# - Mikhail Titov, <mikhail.titov@cern.ch>, 2017-2018
 #
 
 import os
 
-from ....utils import ConfigBase
+from ..configbase import ConfigBase
 
 COMMON_QUERY_CONDITIONS = [
     "(taskname like 'data%' OR taskname like 'mc%')",

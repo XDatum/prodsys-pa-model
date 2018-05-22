@@ -10,7 +10,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Authors:
-# - Mikhail Titov, <mikhail.titov@cern.ch>, 2017
+# - Mikhail Titov, <mikhail.titov@cern.ch>, 2017-2018
 #
 
 import argparse
@@ -18,6 +18,9 @@ import sys
 
 from p2pamodel.handlers.collector.client import (Collector,
                                                  DataType)
+
+DAYS_DEFAULT = 90
+DAYS_OFFSET_DEFAULT = 0
 
 
 def get_args():
@@ -57,7 +60,7 @@ def get_args():
         '-c', '--config',
         dest='config',
         type=str,
-        help='Configuration module name (in .config sub-pkg).',
+        help='Configuration module name (in config-sub-pkg).',
         required=False
     )
 
@@ -65,6 +68,7 @@ def get_args():
         '--days',
         dest='days',
         type=int,
+        default=DAYS_DEFAULT,
         help='Number of days for the requested period.',
         required=False
     )
@@ -73,6 +77,7 @@ def get_args():
         '--days-offset',
         dest='days_offset',
         type=int,
+        default=DAYS_OFFSET_DEFAULT,
         help='Number of days to offset.',
         required=False
     )

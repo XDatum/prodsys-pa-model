@@ -8,9 +8,13 @@
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-# Authors:
-# - Mikhail Titov, <mikhail.titov@cern.ch>, 2017
-#
 
-DAYS_DEFAULT = 90
-DAYS_OFFSET_DEFAULT = 0
+IN_PRODUCTION = False
+
+try:
+    if IN_PRODUCTION:
+        from .production import *
+    else:
+        from .local import *
+except ImportError:
+    pass

@@ -10,7 +10,7 @@
 #
 # Authors:
 # - Maksim Gubin, <maksim.gubin@cern.ch>, 2016
-# - Mikhail Titov, <mikhail.titov@cern.ch>, 2017
+# - Mikhail Titov, <mikhail.titov@cern.ch>, 2017-2018
 #
 
 from pyspark import SparkContext
@@ -21,17 +21,10 @@ from pyspark.mllib.regression import LabeledPoint
 
 from ...tools import hdfs
 
-from ..settings import (DataType,
-                        DirType,
-                        STORAGE_PATH_FORMAT,
-                        WORK_DIR_NAME_DEFAULT)
+from ..constants import DataType, DirType
+from ..settings import settings
 
-from .config import (SERVICE_NAME,
-                     TRAINING_OPTIONS,
-                     LABEL_KEY_PARAMETERS,
-                     LABEL_PARAMETER,
-                     FEATURE_PARAMETERS)
-
+COMPONENT_NAME = 'predictor'
 COL_SEPARATOR = ','
 
 IS_RF_METHOD = True
@@ -44,9 +37,7 @@ else:
     _pa_model = RandomForestModel
     _pa_key = 'rf'
 
-_training_options = TRAINING_OPTIONS[_pa_key]
-
-sc = SparkContext(appName=SERVICE_NAME)
+sc = SparkContext(appName=settings.SERVICE_NAME)
 
 
 class Predictor(object):
@@ -57,16 +48,24 @@ class Predictor(object):
 
         @keyword work_dir: Working directory name.
         @keyword data_dir: Directory with any data.
+        @keyword config: Configuration module name (in config-sub-pkg).
         @keyword verbose: Flag to get (show) logs.
         """
         self._model = None
         self._paths = {}
 
-        work_dir = kwargs.get('work_dir') or WORK_DIR_NAME_DEFAULT
+        work_dir = kwargs.get('work_dir') or settings.WORK_DIR_NAME_DEFAULT
         self._set_dir_path(dir_type=DirType.Work,
                            dir_name=work_dir)
         self._set_dir_path(dir_type=DirType.Data,
                            dir_name=kwargs.get('data_dir'))
+
+        self._config = getattr(__import__(
+            '{0}.{1}'.format(
+                settings.CONFIG_PKG_PATH_FORMAT.format(
+                    component=COMPONENT_NAME),
+                kwargs['config']),
+            fromlist=['config']), 'config')
 
         self._verbose = kwargs.get('verbose', False)
 
@@ -80,7 +79,7 @@ class Predictor(object):
 
     def _set_dir_path(self, dir_type, dir_name):
         if dir_type and dir_name:
-            self._paths[dir_type] = STORAGE_PATH_FORMAT.\
+            self._paths[dir_type] = settings.STORAGE_PATH_FORMAT.\
                 format(dir_name=dir_name)
 
     def _get_path(self, data_type):
@@ -110,7 +109,9 @@ class Predictor(object):
         output = {}
 
         num_skip = num_skip or 1
-        for idx, (column_name, column_flag) in enumerate(FEATURE_PARAMETERS):
+        for idx, (column_name, column_flag) in enumerate(
+                self._config.feature_parameters):
+
             if column_flag:
                 output[column_name] = sorted(
                     data.map(lambda x: x[idx + num_skip]).distinct().collect())
@@ -148,20 +149,22 @@ class Predictor(object):
         return output
 
     @staticmethod
-    def _create_labeled_point(record, valid_values):
+    def _create_labeled_point(record, feature_parameters, valid_values):
         """
         Transforms categorical features in a record to numbers (indices).
 
         @param record: Data record.
         @type record: list/tuple
+        @param feature_parameters: List of feature parameters.
+        @type feature_parameters: list/tuple
         @param valid_values: Set of valid (possible) values.
         @type valid_values: dict
         @return: Object with corresponding labeled points.
         @rtype: LabeledPoint
         """
-        features = list(record[-len(FEATURE_PARAMETERS):])
+        features = list(record[-len(feature_parameters):])
 
-        for idx, (column_name, column_flag) in enumerate(FEATURE_PARAMETERS):
+        for idx, (column_name, column_flag) in enumerate(feature_parameters):
             if column_flag:
 
                 try:
@@ -182,7 +185,7 @@ class Predictor(object):
                                         '{0} ({1}: {2})'.
                                         format(e, column_name, features[idx]))
 
-        return LabeledPoint(record[-len(FEATURE_PARAMETERS) - 1] or 0, features)
+        return LabeledPoint(record[-len(feature_parameters) - 1] or 0, features)
 
     def load_model(self):
         """
@@ -197,8 +200,9 @@ class Predictor(object):
         # load TRAINING data
         sql_context = SQLContext(sc)
         raw_data = sql_context.read.parquet(self._get_path(DataType.Training))
-        filtered_data = raw_data.select([LABEL_PARAMETER] +
-                                        map(lambda x: x[0], FEATURE_PARAMETERS))
+        filtered_data = raw_data.select(
+            [self._config.label_parameter] +
+            map(lambda x: x[0], self._config.feature_parameters))
 
         # generate valid values
         valid_values = self._generate_labeled_point_values(
@@ -206,11 +210,14 @@ class Predictor(object):
 
         # convert categorical features to corresponding indices
         convert_to_labeled_point = self._create_labeled_point
+        feature_parameters = self._config.feature_parameters
         training_data = filtered_data.map(lambda x: convert_to_labeled_point(
-            record=x, valid_values=valid_values))
+            record=x,
+            feature_parameters=feature_parameters,
+            valid_values=valid_values))
 
         # form parameter categorical_features_info for model creation
-        features_names = map(lambda x: x[0], FEATURE_PARAMETERS)
+        features_names = map(lambda x: x[0], self._config.feature_parameters)
         categorical_features_info = dict(map(
             lambda x: (features_names.index(x), len(valid_values[x]) + 1),
             valid_values))
@@ -219,7 +226,7 @@ class Predictor(object):
             self._model = _pa_method.trainRegressor(
                 data=training_data,
                 categoricalFeaturesInfo=categorical_features_info,
-                **_training_options)
+                **self._config.training_options[_pa_key])
         except ValueError, e:
             raise Exception('[ERROR] Exception in model training: {0}'.
                             format(e))
@@ -233,16 +240,20 @@ class Predictor(object):
         # load TEST data
         sql_context = SQLContext(sc)
         raw_data = sql_context.read.parquet(self._get_path(DataType.Test))
-        filtered_data = raw_data.select([LABEL_PARAMETER] +
-                                        map(lambda x: x[0], FEATURE_PARAMETERS))
+        filtered_data = raw_data.select(
+            [self._config.label_parameter] +
+            map(lambda x: x[0], self._config.feature_parameters))
 
         # get/load valid values
         valid_values = self._load_labeled_point_values()
 
         # convert categorical features to corresponding indices
         convert_to_labeled_point = self._create_labeled_point
+        feature_parameters = self._config.feature_parameters
         test_data = filtered_data.map(lambda x: convert_to_labeled_point(
-            record=x, valid_values=valid_values))
+            record=x,
+            feature_parameters=feature_parameters,
+            valid_values=valid_values))
 
         # calculate predictions
         predictions = self._model.predict(test_data.map(lambda x: x.features))
@@ -279,22 +290,26 @@ class Predictor(object):
         # load INPUT data
         sql_context = SQLContext(sc)
         raw_data = sql_context.read.parquet(self._get_path(DataType.Input))
-        filtered_data = raw_data.select(LABEL_KEY_PARAMETERS +
-                                        [LABEL_PARAMETER] +
-                                        map(lambda x: x[0], FEATURE_PARAMETERS))
+        filtered_data = raw_data.select(
+            self._config.label_key_parameters +
+            [self._config.label_parameter] +
+            map(lambda x: x[0], self._config.feature_parameters))
 
         # get/load valid values
         valid_values = self._load_labeled_point_values()
 
         # convert categorical features to corresponding indices
         convert_to_labeled_point = self._create_labeled_point
+        feature_parameters = self._config.feature_parameters
         input_data = filtered_data.map(lambda x: convert_to_labeled_point(
-            record=x, valid_values=valid_values))
+            record=x,
+            feature_parameters=feature_parameters,
+            valid_values=valid_values))
 
         # calculate predictions
         predictions = self._model.predict(input_data.map(lambda x: x.features))
 
-        num_key_params = len(LABEL_KEY_PARAMETERS)
+        num_key_params = len(self._config.label_key_parameters)
         input_key_data = filtered_data.map(lambda x: tuple(x[:num_key_params]))
         key_data_with_predictions = (input_key_data.
                                      zip(predictions).

@@ -10,7 +10,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Authors:
-# - Mikhail Titov, <mikhail.titov@cern.ch>, 2017
+# - Mikhail Titov, <mikhail.titov@cern.ch>, 2017-2018
 #
 
 import argparse
@@ -70,6 +70,14 @@ def get_args():
         required=False
     )
 
+    parser.add_argument(
+        '-c', '--config',
+        dest='config',
+        type=str,
+        help='Configuration module name (in config-sub-pkg).',
+        required=False
+    )
+
     return parser.parse_args(sys.argv[1:])
 
 
@@ -83,6 +91,7 @@ def proceed(args):
 
     predictor = Predictor(work_dir=args.work_dir,
                           data_dir=args.data_dir,
+                          config=args.config,
                           verbose=args.verbose)
 
     if args.train:

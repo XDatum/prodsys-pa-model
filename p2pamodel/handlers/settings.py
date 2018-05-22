@@ -9,39 +9,24 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Authors:
-# - Mikhail Titov, <mikhail.titov@cern.ch>, 2017
+# - Mikhail Titov, <mikhail.titov@cern.ch>, 2018
 #
 
-from datetime import datetime as dt
+import importlib
 
-from ..utils import EnumTypes
-
-HDFS_BASE_DIR = '/atlas/prodsys_model'
-
-HDFS_DATA_DIR = '{0}/data'.format(HDFS_BASE_DIR)
-HDFS_PRIVATE_DIR = '{0}/private'.format(HDFS_BASE_DIR)
-
-STORAGE_PATH_FORMAT = 'hdfs://{0}/{1}'.format(HDFS_DATA_DIR, '{dir_name}')
-
-WORK_DIR_NAME_DEFAULT = dt.utcnow().strftime('%Y%m%d')
-
-DataType = EnumTypes(
-    ('Training', 'training'),
-    ('Test', 'test'),
-    ('Model', 'model'),
-    ('Eval', 'eval'),
-    ('Input', 'input'),
-    ('Output', 'output'),
-    ('Domain', 'domain'),
-)
-
-DirType = EnumTypes(
-    ('Work', 'work'),
-    ('Data', 'data')
-)
+SETTINGS_MODULE = 'p2pamodel.config.settings'
 
 
-try:
-    from .settings_local import *
-except ImportError:
-    pass
+class Settings(object):
+
+    def __init__(self, settings_module=None):
+        settings_module = settings_module or SETTINGS_MODULE
+        if not settings_module:
+            raise Exception('[P2PAMODEL] Settings module is not defined.')
+
+        mod = importlib.import_module(settings_module)
+        for setting in dir(mod):
+            setattr(self, setting, getattr(mod, setting))
+
+
+settings = Settings()

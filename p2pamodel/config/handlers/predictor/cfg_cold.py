@@ -9,37 +9,28 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Authors:
-# - Mikhail Titov, <mikhail.titov@cern.ch>, 2017
+# - Mikhail Titov, <mikhail.titov@cern.ch>, 2017-2018
 #
 
-import os
-import sys
+from ..configbase import ConfigBase
 
-if not os.environ.get('SPARK_HOME'):
-    os.environ['SPARK_HOME'] = '/usr/lib/spark'
-    sys.path.append(os.environ['SPARK_HOME'])
-    os.environ['PYSPARK_PYTHON'] = '/etc/spark/python'
 
-SERVICE_NAME = 'ProdSysPA'
+config = ConfigBase('Config for cold-prediction')
 
-TRAINING_OPTIONS = {
-    'gbt': {
-        'numIterations': 200,
-        'maxDepth': 8,
-        'maxBins': 300
-    },
-    'rf': {
-        'numTrees': 75,
-        'maxDepth': 8,
-        'maxBins': 300,
-        'seed': 42
-    }
+config.training_options = {
+    'gbt': {'numIterations': 200,
+            'maxDepth': 8,
+            'maxBins': 300},
+    'rf': {'numTrees': 75,
+           'maxDepth': 8,
+           'maxBins': 300,
+           'seed': 42}
 }
 
 # - (!) same as in [parquet] converter -
-LABEL_KEY_PARAMETERS = ['TASKID', 'SUBMITTIME']
-LABEL_PARAMETER = 'DURATION'
-FEATURE_PARAMETERS = [
+config.label_key_parameters = ['TASKID', 'SUBMITTIME']
+config.label_parameter = 'DURATION'
+config.feature_parameters = [
     ('PROJECT', 1),
     ('PRODUCTIONSTEP', 1),
     ('USERNAME', 1),

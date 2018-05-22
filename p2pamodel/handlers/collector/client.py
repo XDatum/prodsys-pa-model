@@ -9,21 +9,16 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Authors:
-# - Mikhail Titov, <mikhail.titov@cern.ch>, 2017
+# - Mikhail Titov, <mikhail.titov@cern.ch>, 2017-2018
 #
 
 from ...tools import hdfs
 from ...utils import pyCMD
 
-from ..settings import (DataType,
-                        HDFS_DATA_DIR,
-                        HDFS_PRIVATE_DIR,
-                        WORK_DIR_NAME_DEFAULT)
+from ..constants import DataType
+from ..settings import settings
 
-from .config import (DAYS_DEFAULT,
-                     DAYS_OFFSET_DEFAULT)
-
-CONFIG_PKG_PATH = 'p2pamodel.handlers.collector.config'
+COMPONENT_NAME = 'collector'
 
 
 class Collector(object):
@@ -33,17 +28,21 @@ class Collector(object):
         Initialization.
 
         @keyword work_dir: Working directory name.
-        @keyword config: Configuration module name (in .config sub-pkg).
+        @keyword config: Configuration module name (in config-sub-pkg).
         @keyword verbose: Flag to get (show) logs.
         """
         if not kwargs.get('config'):
             raise Exception('Configuration module name is not set.')
 
         self._work_dir = '{0}/{1}'.format(
-            HDFS_DATA_DIR, kwargs.get('work_dir') or WORK_DIR_NAME_DEFAULT)
+            settings.HDFS_DATA_DIR,
+            kwargs.get('work_dir') or settings.WORK_DIR_NAME_DEFAULT)
 
         self._config = getattr(__import__(
-            '{0}.{1}'.format(CONFIG_PKG_PATH, kwargs['config']),
+            '{0}.{1}'.format(
+                settings.CONFIG_PKG_PATH_FORMAT.format(
+                    component=COMPONENT_NAME),
+                kwargs['config']),
             fromlist=['config']), 'config')
 
         self._verbose = kwargs.get('verbose', False)
@@ -52,31 +51,7 @@ class Collector(object):
         return '{0}/{1}'.format(self._work_dir, source)
 
     @staticmethod
-    def _form_sql_time_period(column_name, days=None, days_offset=None):
-        """
-        Form SQL query part that is responsible for time period.
-
-        @param column_name: Datetime column name.
-        @type column_name: str
-        @param days: Number of days (period time).
-        @type days: int/None
-        @param days_offset: Number of days for offset.
-        @type days_offset: int/None
-        @return: SQL format for time period statement.
-        @rtype: str
-        """
-        days = days or DAYS_DEFAULT
-        days_offset = days_offset or DAYS_OFFSET_DEFAULT
-
-        return ' AND '.join([
-            "{0} >= CURRENT_DATE - {1}".format(
-                column_name,
-                days + days_offset),
-            "{0} < CURRENT_DATE{1}".format(
-                column_name,
-                '' if not days_offset else ' - {0}'.format(days_offset))])
-
-    def _get_sql_query(self, query_specs, days, days_offset):
+    def _get_sql_query(query_specs, days, days_offset):
         """
         Form SQL query for Sqoop command.
 
@@ -93,10 +68,12 @@ class Collector(object):
             ', '.join(query_specs.select_columns),
             query_specs.table,
             ' AND '.join(
-                [self._form_sql_time_period(
-                    column_name=query_specs.time_range_column,
-                    days=days,
-                    days_offset=days_offset)] +
+                ['{column} >= {min_date} AND {column} < {max_date}'.format(
+                    column=query_specs.time_range_column,
+                    min_date='CURRENT_DATE - {0}'.format(days + days_offset),
+                    max_date='CURRENT_DATE{0}'.format(
+                        '' if not days_offset
+                        else ' - {0}'.format(days_offset)))] +
                 query_specs.conditions +
                 ['$CONDITIONS'])
         )
@@ -117,7 +94,7 @@ class Collector(object):
             src_name = '{0}'.format(source)
 
             password_file = hdfs.create_private_file(
-                dir_name=HDFS_PRIVATE_DIR,
+                dir_name=settings.HDFS_PRIVATE_DIR,
                 service_name=src_name,
                 message=source.db.passphrase)
 

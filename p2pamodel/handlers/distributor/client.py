@@ -9,7 +9,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Authors:
-# - Mikhail Titov, <mikhail.titov@cern.ch>, 2017
+# - Mikhail Titov, <mikhail.titov@cern.ch>, 2017-2018
 #
 
 import numpy as np
@@ -17,17 +17,15 @@ import numpy as np
 from pyspark import SparkContext
 from pyspark.sql import SQLContext
 
-from .providers.deftclient import DEFTClient
+from ...providers.deftclient import DEFTClient as Provider
 
-from ..settings import (DataType,
-                        STORAGE_PATH_FORMAT,
-                        WORK_DIR_NAME_DEFAULT)
+from ..constants import DataType
+from ..settings import settings
 
-from .config import (api_credentials,
-                     SERVICE_NAME)
-
+COMPONENT_NAME = 'distributor'
+CONFIG_FILE_NAME = 'cfg_deft'
 THRESHOLD_PERCENTILE = 95
-sc = SparkContext(appName=SERVICE_NAME)
+sc = SparkContext(appName=settings.SERVICE_NAME)
 
 
 class Distributor(object):
@@ -42,12 +40,20 @@ class Distributor(object):
         @keyword verbose: Flag to get (show) logs.
         """
         self._source_path = '{0}/{1}'.format(
-            STORAGE_PATH_FORMAT.format(
-                dir_name=kwargs.get('data_dir') or WORK_DIR_NAME_DEFAULT),
+            settings.STORAGE_PATH_FORMAT.format(
+                dir_name=kwargs.get('data_dir')
+                or settings.WORK_DIR_NAME_DEFAULT),
             DataType.Output)
 
+        api_credentials = getattr(__import__(
+            '{0}.{1}'.format(
+                settings.CONFIG_PKG_PATH_FORMAT.format(
+                    component=COMPONENT_NAME),
+                CONFIG_FILE_NAME),
+            fromlist=['api_credentials']), 'api_credentials')
+
         self._user = kwargs.get('auth_user', api_credentials.user)
-        self._provider = DEFTClient(
+        self._provider = Provider(
             auth_user=self._user,
             auth_key=kwargs.get('auth_key', api_credentials.passphrase),
             base_url=api_credentials.url)

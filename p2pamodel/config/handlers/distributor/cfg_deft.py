@@ -13,18 +13,11 @@
 #
 
 import os
-import sys
 
-from ...utils import ConfigBase
+from ..configbase import ConfigBase
+
 
 api_credentials = ConfigBase('Config for distributor module')
 api_credentials.user = os.environ['P2PA_PROVIDER_USER']
 api_credentials.passphrase = os.environ['P2PA_PROVIDER_PASS']
 api_credentials.url = os.environ['P2PA_PROVIDER_URL']
-
-if not os.environ.get('SPARK_HOME'):
-    os.environ['SPARK_HOME'] = '/usr/lib/spark'
-    sys.path.append(os.environ['SPARK_HOME'])
-    os.environ['PYSPARK_PYTHON'] = '/etc/spark/python'
-
-SERVICE_NAME = 'ProdSysPA'
