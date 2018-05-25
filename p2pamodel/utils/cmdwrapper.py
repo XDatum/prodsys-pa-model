@@ -9,7 +9,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Authors:
-# - Mikhail Titov, <mikhail.titov@cern.ch>, 2017
+# - Mikhail Titov, <mikhail.titov@cern.ch>, 2017-2018
 #
 
 from subprocess import Popen, PIPE
@@ -73,6 +73,24 @@ class SimpleCMDWrapper(object):
         """
         return [self._command] + self._options
 
+    def reset_options(self):
+        """
+        Remove defined options.
+        """
+        del self._options[:]
+
+    def set_options(self, *args, **kwargs):
+        """
+        Set new options.
+
+        @param args: List of keys.
+        @type args: list
+        @param kwargs: Dict of options.
+        @type kwargs: dict
+        """
+        self.reset_options()
+        self.add_options(*args, **kwargs)
+
     def add_option(self, key, value=None):
         """
         Add command option (e.g., key/value pair).
@@ -102,18 +120,6 @@ class SimpleCMDWrapper(object):
                 self.add_option(key=option)
         for (key, value) in kwargs.iteritems():
             self.add_option(key=key, value=value)
-
-    def set_options(self, *args, **kwargs):
-        """
-        Set new options.
-
-        @param args: List of keys.
-        @type args: list
-        @param kwargs: Dict of options.
-        @type kwargs: dict
-        """
-        self._options = []
-        self.add_options(*args, **kwargs)
 
     def execute(self):
         """
