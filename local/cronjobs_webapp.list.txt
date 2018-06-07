@@ -1,0 +1,18 @@
+#
+# - Cron jobs for ProdSys PA Model Handling service -
+#
+
+
+# - get tasks to calculate duration thresholds (weekly) -
+00 06 * * 0 source /home/cronjobs/env.sh; source $P2PA_WEBAPP_DIR/bin/activate; $P2PA_DJANGOAPP_DIR/bin/perform_operation_process.py --category "thresholds definition [task]"
+
+
+# - create model [cold-prediction] with [projectType=data/mc] tasks (weekly) -
+00 07 * * 0 source /home/cronjobs/env.sh; source $P2PA_WEBAPP_DIR/bin/activate; $P2PA_DJANGOAPP_DIR/bin/perform_operation_process.py --category "model creation (cold) [task]"
+
+
+# - get new [projectType=data/mc] tasks and make [cold] predictions (twice-daily) -
+00 04,16 * * * source /home/cronjobs/env.sh; source $P2PA_WEBAPP_DIR/bin/activate; $P2PA_DJANGOAPP_DIR/bin/perform_operation_process.py --category "predictions generation (cold) [task]"
+
+
+# --- end ---

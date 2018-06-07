@@ -18,6 +18,16 @@ from ..configbase import ConfigBase
 
 
 api_credentials = ConfigBase('Config for distributor module')
-api_credentials.user = os.environ['P2PA_PROVIDER_USER']
-api_credentials.passphrase = os.environ['P2PA_PROVIDER_PASS']
-api_credentials.url = os.environ['P2PA_PROVIDER_URL']
+
+external = ConfigBase()
+external.user = os.environ.get('P2PA_EXTERNAL_SVC_USER')
+external.passphrase = os.environ.get('P2PA_EXTERNAL_SVC_PASS')
+external.url = os.environ.get('P2PA_EXTERNAL_SVC_URL')
+
+api_credentials.external = external
+
+internal = ConfigBase()
+internal.token = os.environ.get('P2PA_INTERNAL_SVC_TOKEN')
+internal.url = os.environ.get('P2PA_INTERNAL_SVC_URL')
+
+api_credentials.internal = internal

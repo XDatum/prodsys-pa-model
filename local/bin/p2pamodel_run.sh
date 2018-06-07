@@ -7,7 +7,6 @@ ANALYTICS_CLUSTER=analytix.cern.ch
 
 P2PA_CRONJOBS_DIR=${P2PA_CRONJOBS_DIR:-/home/cronjobs}
 SERVICE_KEYTAB=${P2PA_CRONJOBS_DIR}/.globus/${SERVICE_EXEC_USER}.keytab
-#SERVICE_BASE_DIR=${P2PA_CRONJOBS_DIR}/services/prodsys-pa-model
 
 P2PA_EXEC_DIR=/afs/cern.ch/user/${SERVICE_EXEC_USER:0:1}/${SERVICE_EXEC_USER}/prodsys-pa-model
 P2PA_EXEC_MODULE="$P2PA_EXEC_DIR/bin/$handlername.py ${@:2}"

@@ -17,13 +17,20 @@ import numpy as np
 from pyspark import SparkContext
 from pyspark.sql import SQLContext
 
-from ...providers.deftclient import DEFTClient as Provider
+from ...providers.deftclient import DEFTClient as ExternalService
+
+try:
+    from ...providers.p2paclient import P2PAClient as InternalService
+except ImportError:
+    use_internal_service = False
+else:
+    use_internal_service = True
 
 from ..constants import DataType
 from ..settings import settings
 
 COMPONENT_NAME = 'distributor'
-CONFIG_FILE_NAME = 'cfg_deft'
+CONFIG_FILE_NAME = 'cfg_distr'
 THRESHOLD_PERCENTILE = 95
 sc = SparkContext(appName=settings.SERVICE_NAME)
 
@@ -52,11 +59,19 @@ class Distributor(object):
                 CONFIG_FILE_NAME),
             fromlist=['api_credentials']), 'api_credentials')
 
-        self._user = kwargs.get('auth_user', api_credentials.user)
-        self._provider = Provider(
-            auth_user=self._user,
-            auth_key=kwargs.get('auth_key', api_credentials.passphrase),
-            base_url=api_credentials.url)
+        self._external_user = kwargs.get(
+            'auth_user', api_credentials.external.user)
+
+        self._external_service = ExternalService(
+            auth_user=self._external_user,
+            auth_key=kwargs.get(
+                'auth_key', api_credentials.external.passphrase),
+            base_url=api_credentials.external.url)
+
+        if use_internal_service:
+            self._internal_service = InternalService(
+                token=api_credentials.internal.token,
+                base_url=api_credentials.internal.url)
 
         self._verbose = kwargs.get('verbose', False)
 
@@ -74,16 +89,16 @@ class Distributor(object):
             mapValues(lambda x: int(
                 np.percentile(list(x), THRESHOLD_PERCENTILE)))
 
-        ttcr_dict = prepared_data.collectAsMap()
-        if ttcr_dict:
-            self._provider.set_ttcr(owner=self._user,
-                                    ttcr_dict=ttcr_dict)
+        output = prepared_data.collectAsMap()
+        if output:
+            self._external_service.set_ttcr(owner=self._external_user,
+                                            ttcr_dict=output)
 
     def set_ttcj_dict(self):
         """
         Get text-file (<taskId,submitTime,duration>) and set ttcj_timestamp.
         """
-        ttcj_dict = {}
+        output = {}
 
         for task_id, submit_time, duration in sc.\
                 textFile(self._source_path).\
@@ -91,9 +106,12 @@ class Distributor(object):
                 filter(lambda x: len(x) > 1).\
                 collect():
 
-            ttcj_dict[int(task_id)] = \
+            output[int(task_id)] = \
                 int((float(submit_time) + float(duration)) / 1e3)
 
-        if ttcj_dict:
-            self._provider.set_ttcj(owner=self._user,
-                                    ttcj_dict=ttcj_dict)
+        if output:
+            self._external_service.set_ttcj(owner=self._external_user,
+                                            ttcj_dict=output)
+
+            if use_internal_service:
+                self._internal_service.set_td_predictions(data=output)
