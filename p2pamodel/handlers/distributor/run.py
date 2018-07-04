@@ -53,6 +53,14 @@ def get_args():
         required=True
     )
 
+    parser.add_argument(
+        '--process-id',
+        dest='process_id',
+        type=int,
+        help='Id of the associated process to connect with.',
+        required=False
+    )
+
     return parser.parse_args(sys.argv[1:])
 
 
@@ -68,9 +76,9 @@ def proceed(args):
                               verbose=args.verbose)
 
     if args.method == 'set_ttcr_dict':
-        distributor.set_ttc_thresholds()
+        distributor.set_ttc_thresholds_mapping()
     elif args.method == 'set_ttcj_dict':
-        distributor.set_ttc_predictions()
+        distributor.set_ttc_predictions(process_id=args.process_id)
 
 
 if __name__ == '__main__':

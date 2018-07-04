@@ -75,7 +75,7 @@ class Distributor(object):
 
         self._verbose = kwargs.get('verbose', False)
 
-    def set_ttc_thresholds(self):
+    def set_ttc_thresholds_mapping(self):
         """
         Get data from parquet-file, generate thresholds and upload to database.
         """
@@ -94,9 +94,11 @@ class Distributor(object):
             self._external_service.set_ttcr(owner=self._external_user,
                                             ttcr_dict=output)
 
-    def set_ttc_predictions(self):
+    def set_ttc_predictions(self, **kwargs):
         """
         Get text-file (<taskId,submitTime,duration>) and set ttcj_timestamp.
+
+        @keyword process_id: Id of the associated process to connect with.
         """
         output = {}
 
@@ -114,4 +116,7 @@ class Distributor(object):
                                             ttcj_dict=output)
 
             if use_internal_service:
-                self._internal_service.set_td_predictions(data=output)
+                data = {'data': output}
+                if kwargs.get('process_id'):
+                    data['process_id'] = kwargs['process_id']
+                self._internal_service.set_td_predictions(**data)
