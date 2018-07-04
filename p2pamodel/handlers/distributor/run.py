@@ -10,7 +10,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Authors:
-# - Mikhail Titov, <mikhail.titov@cern.ch>, 2017
+# - Mikhail Titov, <mikhail.titov@cern.ch>, 2017-2018
 #
 
 import argparse
@@ -68,9 +68,9 @@ def proceed(args):
                               verbose=args.verbose)
 
     if args.method == 'set_ttcr_dict':
-        distributor.set_ttcr_dict()
+        distributor.set_ttc_thresholds()
     elif args.method == 'set_ttcj_dict':
-        distributor.set_ttcj_dict()
+        distributor.set_ttc_predictions()
 
 
 if __name__ == '__main__':

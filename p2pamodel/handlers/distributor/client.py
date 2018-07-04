@@ -75,7 +75,7 @@ class Distributor(object):
 
         self._verbose = kwargs.get('verbose', False)
 
-    def set_ttcr_dict(self):
+    def set_ttc_thresholds(self):
         """
         Get data from parquet-file, generate thresholds and upload to database.
         """
@@ -94,7 +94,7 @@ class Distributor(object):
             self._external_service.set_ttcr(owner=self._external_user,
                                             ttcr_dict=output)
 
-    def set_ttcj_dict(self):
+    def set_ttc_predictions(self):
         """
         Get text-file (<taskId,submitTime,duration>) and set ttcj_timestamp.
         """
