@@ -96,6 +96,6 @@ class P2PAClient(object):
         if process_id:
             options['process_id'] = process_id
         return self._create_request(action_cls='prediction',
-                                    action='set_block_td',
+                                    action='set_td_block',
                                     body=data,
                                     **options)
