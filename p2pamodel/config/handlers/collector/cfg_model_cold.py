@@ -68,7 +68,7 @@ deft1_src.db.passphrase = os.environ['P2PA_SRC_DEFT_PASS']
 deft1_src.query = ConfigBase()
 deft1_src.query.select_columns = [
     'TASKID',
-    'TOTAL_REQ_EVENTS'
+    'OUTPUT_FORMATS'  # parameter TOTAL_REQ_EVENTS is removed temporarily
 ]
 deft1_src.query.table = 't_production_task'
 deft1_src.query.conditions = COMMON_QUERY_CONDITIONS

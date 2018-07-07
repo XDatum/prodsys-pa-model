@@ -44,5 +44,5 @@ config.feature_parameters = [
     ('RAMCOUNT', 0),
     ('RAMUNIT', 1),
     ('PRIORITY', 0),
-    ('TOTALREQEVENTS', 0)
+    ('OUTPUTFORMATS', 1)
 ]

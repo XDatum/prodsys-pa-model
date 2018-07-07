@@ -48,6 +48,6 @@ deft0_tasks::CORECOUNT AS CORECOUNT,
 deft0_tasks::RAMCOUNT AS RAMCOUNT,
 deft0_tasks::RAMUNIT AS RAMUNIT,
 deft0_tasks::PRIORITY AS PRIORITY,
-deft1_tasks::TOTAL_REQ_EVENTS AS TOTALREQEVENTS;
+deft1_tasks::OUTPUT_FORMATS AS OUTPUTFORMATS;
 
 STORE prepared INTO '$out' USING parquet.pig.ParquetStorer;
