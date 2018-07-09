@@ -1,27 +1,38 @@
-__author__ = 'Dmitry Golubkov'
-__email__ = 'dmitry.v.golubkov@cern.ch'
+#
+# Author:
+# - Dmitry Golubkov, <dmitry.v.golubkov@cern.ch>, 2016-2018
+#
+# Updates by:
+# - Mikhail Titov, <mikhail.titov@cern.ch>, 2018
+#
 
 import json
 
 try:
     import requests
+    import urllib
 except ImportError:
     pass
+
+API_VERSION = 'v1'
 
 
 class DEFTClient(object):
 
-    API_BASE_PATH = '/api/v1/request/'
+    API_BASE_PATH = '/api/{0}'.format(API_VERSION)
 
     def __init__(self, auth_user, auth_key, base_url, verify_ssl_cert=False):
-        self.url = '{0}{1}'.format(base_url, self.API_BASE_PATH)
-        self.verify_ssl_cert = verify_ssl_cert
+        self.api_url = '{0}{1}'.format(base_url, self.API_BASE_PATH)
         self.headers = {
             'Content-Type': 'application/json',
             'Authorization': 'ApiKey {0}:{1}'.format(auth_user, auth_key)}
+        self.verify_ssl_cert = verify_ssl_cert
 
     def _get_action_list(self):
-        response = requests.get('{0}actions/'.format(self.url),
+        action_cls = 'actions'
+        response = requests.get(url='{0}/{1}/'.format(
+                                    self.api_url,
+                                    action_cls),
                                 headers=self.headers,
                                 verify=self.verify_ssl_cert)
 
@@ -37,7 +48,10 @@ class DEFTClient(object):
             raise Exception('Invalid action: {0} ({1})'.
                             format(action, str(action_list)))
 
-        response = requests.post(self.url,
+        action_cls = 'request'
+        response = requests.post(url='{0}/{1}/'.format(
+                                     self.api_url,
+                                     action_cls),
                                  headers=self.headers,
                                  data=json.dumps({
                                      'action': action,
@@ -54,8 +68,31 @@ class DEFTClient(object):
             raise Exception('Invalid HTTP response code: {0}'.
                             format(response.status_code))
 
+    def _create_task_search(self, filter_dict):
+        if filter_dict:
+            filter_dict.update({'limit': 0})
+        filter_string = urllib.urlencode(filter_dict)
+
+        action_cls = 'task'
+        response = requests.get(url='{0}/{1}/?{2}'.format(
+                                    self.api_url,
+                                    action_cls,
+                                    filter_string),
+                                headers=self.headers,
+                                verify=self.verify_ssl_cert)
+
+        if response.status_code == requests.codes.ok:
+            return json.loads(response.content)
+        else:
+            raise Exception('Invalid HTTP response code: {0}'.
+                            format(response.status_code))
+
     def get_status(self, request_id):
-        response = requests.get('{0}{1}/'.format(self.url, request_id),
+        action_cls = 'request'
+        response = requests.get(url='{0}/{1}/{2}/'.format(
+                                    self.api_url,
+                                    action_cls,
+                                    request_id),
                                 headers=self.headers,
                                 verify=self.verify_ssl_cert)
 
@@ -78,3 +115,9 @@ class DEFTClient(object):
         return self._create_request(action='set_ttcj',
                                     owner=owner,
                                     body={'ttcj_dict': ttcj_dict})
+
+    def get_task(self, task_id):
+        if task_id:
+            response = self._create_task_search(filter_dict={'id': task_id})
+            if response.get('objects'):
+                return response['objects'][0]
